@@ -7,8 +7,8 @@ describe("system", () => {
     const info = JSON.parse(getSystemInfo());
     expect(info.platform).toBeTruthy();
     expect(info.nodeVersion).toBeTruthy();
-    expect(info.cpus).toBeGreaterThan(0);
-    expect(info.totalMemory).toBeTruthy();
+    expect(info.cpu.count).toBeGreaterThan(0);
+    expect(info.memory.total).toBeTruthy();
   });
 
   it("checks port availability", async () => {

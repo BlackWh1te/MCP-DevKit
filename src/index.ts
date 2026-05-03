@@ -28,12 +28,12 @@ import {
 } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
 import { readFile, writeFile, editFile, deleteFile, moveFile, copyFile, createDirectory, removeDirectory, listDirectory } from "./files.js";
-import { httpRequest } from "./http.js";
-import { listProcesses, killProcess } from "./process.js";
-import { getSystemInfo, checkPort, getEnvFile } from "./system.js";
+import { httpRequest, clearHttpCache, getHttpCacheStats } from "./http.js";
+import { listProcesses, killProcess, getProcessTree, monitorProcess, filterProcesses, clearProcessHistory, getProcessHistory } from "./process.js";
+import { getSystemInfo, checkPort, getEnvFile, getDiskUsage, getNetworkInfo, getEnvVarAnalysis } from "./system.js";
 import { getCodeStats } from "./stats.js";
-import { generateCommitMessage } from "./ai-commit.js";
-import { getPackageScripts, runPackageScript } from "./package-runner.js";
+import { generateCommitMessage, validateCommit } from "./ai-commit.js";
+import { getPackageScripts, runPackageScript, getDependencies, clearPackageCache, getPackageCacheStats, getPackageInfo } from "./package-runner.js";
 import {
   generateUUID, hashText, base64Encode, base64Decode,
   urlEncode, urlDecode, formatJson,
@@ -41,7 +41,7 @@ import {
 } from "./utils.js";
 import { think, getThoughts, clearThinking } from "./thinking.js";
 import { dbSet, dbGet, dbDelete, dbList, dbQuery } from "./database.js";
-import { fetchText, fetchJson, getFileInfo, directoryTree } from "./web.js";
+import { fetchText, fetchJson, getFileInfo, directoryTree, fetchStructured, extractLinks, extractForms } from "./web.js";
 import {
   diffText, regexTest, generatePassword, jwtDecode,
   analyzeText, convertColor, evaluateMath,
@@ -466,7 +466,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "http_request",
-        description: "Make HTTP GET/POST/PUT/DELETE requests with optional headers and body. Returns status, headers, and body.",
+        description: "Make HTTP GET/POST/PUT/DELETE requests with optional headers, body, retry logic with exponential backoff, and response caching. Returns status, headers, body, and attempt count.",
         inputSchema: {
           type: "object",
           properties: {
@@ -492,13 +492,49 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "Timeout in ms (default: 30000)",
               default: 30000,
             },
+            retryCount: {
+              type: "number",
+              description: "Number of retry attempts on failure (default: 3)",
+              default: 3,
+            },
+            retryDelay: {
+              type: "number",
+              description: "Initial retry delay in ms with exponential backoff (default: 1000)",
+              default: 1000,
+            },
+            cache: {
+              type: "boolean",
+              description: "Enable response caching for GET requests (default: false)",
+              default: false,
+            },
+            cacheTTL: {
+              type: "number",
+              description: "Cache time-to-live in ms (default: 60000)",
+              default: 60000,
+            },
           },
           required: ["url"],
         },
       },
       {
+        name: "clear_http_cache",
+        description: "Clear the HTTP response cache.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_http_cache_stats",
+        description: "Get statistics about the HTTP response cache: size and cached entries.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
         name: "list_processes",
-        description: "List running processes (cross-platform: Windows tasklist, Unix ps). Returns PID, name, CPU, memory.",
+        description: "List running processes (cross-platform: Windows tasklist, Unix ps). Returns PID, name, user, CPU, memory, and start time. Maintains monitoring history.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -506,7 +542,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "kill_process",
-        description: "Kill a process by PID. Cross-platform (taskkill on Windows, kill on Unix).",
+        description: "Kill a process by PID. Cross-platform (taskkill on Windows, kill on Unix). Removes from monitoring history.",
         inputSchema: {
           type: "object",
           properties: {
@@ -516,6 +552,84 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ["pid"],
+        },
+      },
+      {
+        name: "get_process_tree",
+        description: "Get a hierarchical tree view of processes showing parent-child relationships. Optionally filter by specific PID.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pid: {
+              type: "string",
+              description: "Optional process ID to get tree for (default: all processes)",
+            },
+          },
+        },
+      },
+      {
+        name: "monitor_process",
+        description: "Monitor a specific process over time, sampling CPU and memory usage at regular intervals. Returns statistics including averages and maximums.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pid: {
+              type: "string",
+              description: "Process ID to monitor",
+            },
+            duration: {
+              type: "number",
+              description: "Monitoring duration in milliseconds (default: 60000)",
+              default: 60000,
+            },
+          },
+          required: ["pid"],
+        },
+      },
+      {
+        name: "filter_processes",
+        description: "Filter processes by name, user, minimum CPU, or minimum memory usage.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Filter by process name (partial match)",
+            },
+            user: {
+              type: "string",
+              description: "Filter by user name (partial match)",
+            },
+            minCpu: {
+              type: "number",
+              description: "Minimum CPU percentage",
+            },
+            minMem: {
+              type: "number",
+              description: "Minimum memory percentage",
+            },
+          },
+        },
+      },
+      {
+        name: "get_process_history",
+        description: "Get monitoring history for processes. Optionally filter by specific PID.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pid: {
+              type: "string",
+              description: "Optional process ID to get history for (default: all processes)",
+            },
+          },
+        },
+      },
+      {
+        name: "clear_process_history",
+        description: "Clear all process monitoring history.",
+        inputSchema: {
+          type: "object",
+          properties: {},
         },
       },
       {
@@ -547,7 +661,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_env_file",
-        description: "Read a .env file and return variable names with values (secrets masked).",
+        description: "Read a .env file and return variable names with values (secrets masked). Detects and lists secret keys.",
         inputSchema: {
           type: "object",
           properties: {
@@ -557,6 +671,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               default: ".env",
             },
           },
+        },
+      },
+      {
+        name: "get_disk_usage",
+        description: "Get disk usage information for the system or specific directory. Cross-platform (Windows wmic, Unix df).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            dirPath: {
+              type: "string",
+              description: "Directory path to check (default: current directory)",
+            },
+          },
+        },
+      },
+      {
+        name: "get_network_info",
+        description: "Get detailed network interface information including IP addresses, MAC addresses, and CIDR notation.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_env_var_analysis",
+        description: "Analyze environment variables by category (PATH, HOME, SHELL, cloud providers) and detect sensitive variables.",
+        inputSchema: {
+          type: "object",
+          properties: {},
         },
       },
       {
@@ -575,13 +718,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "generate_commit_message",
-        description: "AI-powered commit message generator. Analyzes staged (or unstaged) git diff and suggests a conventional commit message with type, scope, and summary.",
+        description: "AI-powered commit message generator. Analyzes staged (or unstaged) git diff and suggests a conventional commit message with type, scope, breaking change detection, issues/refs extraction, and footer generation.",
         inputSchema: {
           type: "object",
           properties: {
             repoPath: {
               type: "string",
               description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "validate_commit",
+        description: "Validate a commit message against conventional commits specification. Checks format, type, description length, and imperative mood.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (validates last commit if no message provided)",
+            },
+            commitMessage: {
+              type: "string",
+              description: "Commit message to validate (optional, validates last commit if not provided)",
             },
           },
         },
@@ -1029,6 +1189,50 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "get_dependencies",
+        description: "Get project dependencies with caching. Supports Node.js (package.json), Python (pyproject.toml), and Rust (Cargo.toml).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "Project path (default: current)",
+              default: ".",
+            },
+          },
+        },
+      },
+      {
+        name: "get_package_info",
+        description: "Get project package info: name, version, description, author, license, repository, homepage.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "Project path (default: current)",
+              default: ".",
+            },
+          },
+        },
+      },
+      {
+        name: "clear_package_cache",
+        description: "Clear the package scripts and dependencies cache.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_package_cache_stats",
+        description: "Get package cache statistics: script cache size, dependency cache size.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
         name: "generate_uuid",
         description: "Generate a random UUID v4.",
         inputSchema: { type: "object", properties: {} },
@@ -1218,6 +1422,47 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "fetch_json",
         description: "Fetch a URL and return parsed JSON.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            timeout: { type: "number", description: "Timeout in ms (default: 30000)", default: 30000 },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "fetch_structured",
+        description: "Fetch a URL and return structured data extraction: title, description, metadata, links, forms, headings. Supports CSS selector matching.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            timeout: { type: "number", description: "Timeout in ms (default: 30000)", default: 30000 },
+            followRedirects: { type: "number", description: "Max redirects to follow (default: 3)", default: 3 },
+            extractLinks: { type: "boolean", description: "Extract all links (default: true)", default: true },
+            extractMetadata: { type: "boolean", description: "Extract page metadata (default: true)", default: true },
+            extractForms: { type: "boolean", description: "Extract forms (default: true)", default: true },
+            cssSelector: { type: "string", description: "Optional CSS class name to match elements" },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "extract_links",
+        description: "Fetch a URL and extract all links with their text and hrefs.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            timeout: { type: "number", description: "Timeout in ms (default: 30000)", default: 30000 },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "extract_forms",
+        description: "Fetch a URL and extract all forms with their actions, methods, and input fields.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1531,13 +1776,43 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         headers: (args.headers as Record<string, string>) ?? {},
         body: args.body as string | undefined,
         timeout: Number(args.timeout ?? 30000),
+        retryCount: Number(args.retryCount ?? 3),
+        retryDelay: Number(args.retryDelay ?? 1000),
+        cache: Boolean(args.cache ?? false),
+        cacheTTL: Number(args.cacheTTL ?? 60000),
       });
+      break;
+    case "clear_http_cache":
+      result = clearHttpCache();
+      break;
+    case "get_http_cache_stats":
+      result = getHttpCacheStats();
       break;
     case "list_processes":
       result = await listProcesses();
       break;
     case "kill_process":
       result = await killProcess(String(args.pid));
+      break;
+    case "get_process_tree":
+      result = await getProcessTree(args.pid as string | undefined);
+      break;
+    case "monitor_process":
+      result = await monitorProcess(String(args.pid), Number(args.duration ?? 60000));
+      break;
+    case "filter_processes":
+      result = await filterProcesses({
+        name: args.name as string | undefined,
+        user: args.user as string | undefined,
+        minCpu: args.minCpu as number | undefined,
+        minMem: args.minMem as number | undefined,
+      });
+      break;
+    case "get_process_history":
+      result = getProcessHistory(args.pid as string | undefined);
+      break;
+    case "clear_process_history":
+      result = clearProcessHistory();
       break;
     case "get_system_info":
       result = getSystemInfo();
@@ -1548,11 +1823,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "get_env_file":
       result = await getEnvFile(String(args.filePath ?? ".env"));
       break;
+    case "get_disk_usage":
+      result = await getDiskUsage(args.dirPath as string | undefined);
+      break;
+    case "get_network_info":
+      result = getNetworkInfo();
+      break;
+    case "get_env_var_analysis":
+      result = getEnvVarAnalysis();
+      break;
     case "get_code_stats":
       result = await getCodeStats(String(args.path ?? "."));
       break;
     case "generate_commit_message":
       result = await generateCommitMessage(args.repoPath as string | undefined);
+      break;
+    case "validate_commit":
+      result = await validateCommit(args.repoPath as string | undefined, args.commitMessage as string | undefined);
       break;
     case "git_add":
       result = await gitAdd(args.files as string[], args.repoPath as string | undefined);
@@ -1629,6 +1916,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "run_package_script":
       result = await runPackageScript(String(args.script), args.path as string | undefined);
       break;
+    case "get_dependencies":
+      result = await getDependencies(args.path as string | undefined);
+      break;
+    case "get_package_info":
+      result = await getPackageInfo(args.path as string | undefined);
+      break;
+    case "clear_package_cache":
+      result = clearPackageCache();
+      break;
+    case "get_package_cache_stats":
+      result = getPackageCacheStats();
+      break;
     case "generate_uuid":
       result = generateUUID();
       break;
@@ -1694,6 +1993,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "fetch_json":
       result = await fetchJson(String(args.url), Number(args.timeout ?? 30000));
+      break;
+    case "fetch_structured":
+      result = await fetchStructured(String(args.url), {
+        timeout: Number(args.timeout ?? 30000),
+        followRedirects: Number(args.followRedirects ?? 3),
+        extractLinks: Boolean(args.extractLinks ?? true),
+        extractMetadata: Boolean(args.extractMetadata ?? true),
+        extractForms: Boolean(args.extractForms ?? true),
+        cssSelector: args.cssSelector as string | undefined,
+      });
+      break;
+    case "extract_links":
+      result = await extractLinks(String(args.url), Number(args.timeout ?? 30000));
+      break;
+    case "extract_forms":
+      result = await extractForms(String(args.url), Number(args.timeout ?? 30000));
       break;
     case "get_file_info":
       result = await getFileInfo(String(args.filePath));

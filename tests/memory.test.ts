@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { describe, it, expect } from "vitest";
 import { remember, recall, listMemories } from "../src/memory.js";
 

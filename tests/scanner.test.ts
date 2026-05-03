@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { scanProject, getProjectSummary, explainArchitecture } from "../src/scanner.js";
 import { promises as fs } from "fs";

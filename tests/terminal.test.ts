@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { describe, it, expect } from "vitest";
 import { runCommand } from "../src/terminal.js";
 

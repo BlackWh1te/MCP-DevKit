@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { spawn, SpawnOptionsWithoutStdio } from "child_process";
 import os from "os";
 

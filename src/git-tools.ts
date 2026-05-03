@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { spawn } from "child_process";
 
 function runGit(args: string[], cwd?: string, timeout = 15000): Promise<string> {

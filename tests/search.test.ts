@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { searchCode, getFileContext } from "../src/search.js";
 import { promises as fs } from "fs";

@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { promises as fs } from "fs";
 import fsSync from "fs";
 import path from "path";

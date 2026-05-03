@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// BlackWhite — MCP DevKit
 import { scanProject, getProjectSummary, explainArchitecture } from "./scanner.js";
 import { runCommand } from "./terminal.js";
 import { searchCode, getFileContext } from "./search.js";

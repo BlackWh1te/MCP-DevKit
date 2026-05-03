@@ -1,3 +1,4 @@
+// BlackWhite — MCP DevKit
 import { promises as fs, constants } from "fs";
 import path from "path";
 

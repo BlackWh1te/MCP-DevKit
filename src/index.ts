@@ -13,6 +13,11 @@ import { remember, recall, listMemories } from "./memory.js";
 import { runCommand } from "./terminal.js";
 import { gitStatus, gitLog, gitDiff } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
+import { readFile, writeFile, editFile, deleteFile, listDirectory } from "./files.js";
+import { httpRequest } from "./http.js";
+import { listProcesses, killProcess } from "./process.js";
+import { getSystemInfo, checkPort, getEnvFile } from "./system.js";
+import { getCodeStats } from "./stats.js";
 
 const server = new Server(
   {
@@ -266,6 +271,202 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["filePath"],
         },
       },
+      {
+        name: "read_file",
+        description: "Read the full contents of a file as text.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file",
+            },
+          },
+          required: ["filePath"],
+        },
+      },
+      {
+        name: "write_file",
+        description: "Write text content to a file. Creates directories if needed. Overwrites existing files.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file",
+            },
+            content: {
+              type: "string",
+              description: "Content to write",
+            },
+          },
+          required: ["filePath", "content"],
+        },
+      },
+      {
+        name: "edit_file",
+        description: "Replace a unique string in a file. Returns an error if the string is not found or appears more than once.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file",
+            },
+            oldString: {
+              type: "string",
+              description: "Exact string to replace (must be unique in file)",
+            },
+            newString: {
+              type: "string",
+              description: "Replacement string",
+            },
+          },
+          required: ["filePath", "oldString", "newString"],
+        },
+      },
+      {
+        name: "delete_file",
+        description: "Delete a single file safely. Refuses to delete directories.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file to delete",
+            },
+          },
+          required: ["filePath"],
+        },
+      },
+      {
+        name: "list_directory",
+        description: "List files and directories with a nice tree view, respecting max depth.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "Directory path (default: current)",
+              default: ".",
+            },
+            depth: {
+              type: "number",
+              description: "Max depth (default: 1)",
+              default: 1,
+            },
+          },
+        },
+      },
+      {
+        name: "http_request",
+        description: "Make HTTP GET/POST/PUT/DELETE requests with optional headers and body. Returns status, headers, and body.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: {
+              type: "string",
+              description: "URL to request",
+            },
+            method: {
+              type: "string",
+              description: "HTTP method (default: GET)",
+              default: "GET",
+            },
+            headers: {
+              type: "object",
+              description: "Optional headers as key-value pairs",
+            },
+            body: {
+              type: "string",
+              description: "Request body (for POST/PUT/PATCH)",
+            },
+            timeout: {
+              type: "number",
+              description: "Timeout in ms (default: 30000)",
+              default: 30000,
+            },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "list_processes",
+        description: "List running processes (cross-platform: Windows tasklist, Unix ps). Returns PID, name, CPU, memory.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "kill_process",
+        description: "Kill a process by PID. Cross-platform (taskkill on Windows, kill on Unix).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pid: {
+              type: "string",
+              description: "Process ID to kill",
+            },
+          },
+          required: ["pid"],
+        },
+      },
+      {
+        name: "get_system_info",
+        description: "Get system information: OS, architecture, memory, CPU count, Node version, environment variables.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "check_port",
+        description: "Check if a TCP port is available or in use on a host.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            port: {
+              type: "number",
+              description: "Port number to check",
+            },
+            host: {
+              type: "string",
+              description: "Host to check (default: 127.0.0.1)",
+              default: "127.0.0.1",
+            },
+          },
+          required: ["port"],
+        },
+      },
+      {
+        name: "get_env_file",
+        description: "Read a .env file and return variable names with values (secrets masked).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to env file (default: .env)",
+              default: ".env",
+            },
+          },
+        },
+      },
+      {
+        name: "get_code_stats",
+        description: "Analyze code statistics: lines of code, language breakdown, TODO/FIXME counts, file sizes. Cross-platform.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "Project path (default: current)",
+              default: ".",
+            },
+          },
+        },
+      },
     ],
   };
 });
@@ -334,6 +535,48 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         Number(args.startLine ?? 1),
         args.endLine as number | undefined
       );
+      break;
+    case "read_file":
+      result = await readFile(String(args.filePath));
+      break;
+    case "write_file":
+      result = await writeFile(String(args.filePath), String(args.content));
+      break;
+    case "edit_file":
+      result = await editFile(String(args.filePath), String(args.oldString), String(args.newString));
+      break;
+    case "delete_file":
+      result = await deleteFile(String(args.filePath));
+      break;
+    case "list_directory":
+      result = await listDirectory(String(args.path ?? "."), Number(args.depth ?? 1));
+      break;
+    case "http_request":
+      result = await httpRequest({
+        url: String(args.url),
+        method: String(args.method ?? "GET"),
+        headers: (args.headers as Record<string, string>) ?? {},
+        body: args.body as string | undefined,
+        timeout: Number(args.timeout ?? 30000),
+      });
+      break;
+    case "list_processes":
+      result = await listProcesses();
+      break;
+    case "kill_process":
+      result = await killProcess(String(args.pid));
+      break;
+    case "get_system_info":
+      result = getSystemInfo();
+      break;
+    case "check_port":
+      result = await checkPort(Number(args.port), String(args.host ?? "127.0.0.1"));
+      break;
+    case "get_env_file":
+      result = await getEnvFile(String(args.filePath ?? ".env"));
+      break;
+    case "get_code_stats":
+      result = await getCodeStats(String(args.path ?? "."));
       break;
     default:
       throw new Error(`Unknown tool: ${request.params.name}`);

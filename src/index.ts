@@ -11,13 +11,15 @@ import {
 import { scanProject, getProjectSummary, explainArchitecture } from "./scanner.js";
 import { remember, recall, listMemories } from "./memory.js";
 import { runCommand } from "./terminal.js";
-import { gitStatus, gitLog, gitDiff } from "./git-tools.js";
+import { gitStatus, gitLog, gitDiff, gitAdd, gitCommit, gitBranches, gitCheckout } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
 import { readFile, writeFile, editFile, deleteFile, listDirectory } from "./files.js";
 import { httpRequest } from "./http.js";
 import { listProcesses, killProcess } from "./process.js";
 import { getSystemInfo, checkPort, getEnvFile } from "./system.js";
 import { getCodeStats } from "./stats.js";
+import { generateCommitMessage } from "./ai-commit.js";
+import { getPackageScripts, runPackageScript } from "./package-runner.js";
 
 const server = new Server(
   {
@@ -243,6 +245,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "Max matches (default: 50)",
               default: 50,
             },
+            ext: {
+              type: "string",
+              description: "Filter by file extension, e.g., '.ts' or '.py'",
+            },
           },
           required: ["query"],
         },
@@ -467,6 +473,125 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: "generate_commit_message",
+        description: "AI-powered commit message generator. Analyzes staged (or unstaged) git diff and suggests a conventional commit message with type, scope, and summary.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_add",
+        description: "Stage files for commit.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            files: {
+              type: "array",
+              items: { type: "string" },
+              description: "File paths to stage (use ['.'] for all)",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["files"],
+        },
+      },
+      {
+        name: "git_commit",
+        description: "Commit staged changes with a message.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "Commit message",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["message"],
+        },
+      },
+      {
+        name: "git_branches",
+        description: "List all git branches with current branch marker.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_checkout",
+        description: "Switch to an existing branch or create a new one.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            branch: {
+              type: "string",
+              description: "Branch name",
+            },
+            create: {
+              type: "boolean",
+              description: "Create the branch if it doesn't exist",
+              default: false,
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["branch"],
+        },
+      },
+      {
+        name: "get_package_scripts",
+        description: "Detect and list available package scripts from package.json, pyproject.toml, Makefile, or Cargo.toml.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "Project path (default: current)",
+              default: ".",
+            },
+          },
+        },
+      },
+      {
+        name: "run_package_script",
+        description: "Run a package script using the detected package manager (npm/yarn/pnpm/bun/make/cargo).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            script: {
+              type: "string",
+              description: "Script name to run (e.g., 'test', 'build', 'dev')",
+            },
+            path: {
+              type: "string",
+              description: "Project path (default: current)",
+              default: ".",
+            },
+          },
+          required: ["script"],
+        },
+      },
     ],
   };
 });
@@ -526,7 +651,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         String(args.query),
         args.path as string | undefined,
         Boolean(args.literal ?? false),
-        Number(args.maxResults ?? 50)
+        Number(args.maxResults ?? 50),
+        args.ext as string | undefined
       );
       break;
     case "get_file_context":
@@ -577,6 +703,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "get_code_stats":
       result = await getCodeStats(String(args.path ?? "."));
+      break;
+    case "generate_commit_message":
+      result = await generateCommitMessage(args.repoPath as string | undefined);
+      break;
+    case "git_add":
+      result = await gitAdd(args.files as string[], args.repoPath as string | undefined);
+      break;
+    case "git_commit":
+      result = await gitCommit(String(args.message), args.repoPath as string | undefined);
+      break;
+    case "git_branches":
+      result = await gitBranches(args.repoPath as string | undefined);
+      break;
+    case "git_checkout":
+      result = await gitCheckout(String(args.branch), Boolean(args.create ?? false), args.repoPath as string | undefined);
+      break;
+    case "get_package_scripts":
+      result = await getPackageScripts(args.path as string | undefined);
+      break;
+    case "run_package_script":
+      result = await runPackageScript(String(args.script), args.path as string | undefined);
       break;
     default:
       throw new Error(`Unknown tool: ${request.params.name}`);

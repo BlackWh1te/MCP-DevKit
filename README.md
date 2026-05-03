@@ -1,21 +1,23 @@
 # MCP DevKit
 
-> **One MCP server with 24 tools. Replaces 10+ separate servers.**
+> **One MCP server with 32 tools. Replaces 15+ separate servers.**
 >
 > Stop installing a dozen MCP servers. This one does it all — and actually works on Windows.
 
 MCP DevKit is a unified [Model Context Protocol](https://modelcontextprotocol.io) server that gives your AI:
 
-- **Project Intelligence** — auto-detects tech stack, frameworks, entry points
+- **Project Intelligence** — auto-detects 60+ tech stacks, frameworks, entry points
+- **AI Commit Messages** — analyzes diff and suggests conventional commits
 - **Persistent Memory** — remembers facts, TODOs, and decisions across sessions
 - **Cross-Platform Terminal** — runs commands on Windows, Mac, and Linux
 - **File CRUD** — read, write, edit, delete files with safety checks
-- **Git Tools** — status, log, diff without leaving the chat
-- **Code Search** — regex or literal search across the entire project
+- **Git Tools** — status, log, diff, add, commit, branches, checkout
+- **Code Search** — regex or literal search with extension filtering
 - **HTTP Client** — GET/POST/PUT/DELETE requests from the AI
 - **Process Manager** — list and kill running processes
 - **System Info** — OS, memory, CPU, Node version, environment
 - **Port Checker** — see if a port is in use
+- **Package Scripts** — auto-detect and run npm/yarn/pnpm/bun/make/cargo scripts
 - **Code Stats** — lines of code, language breakdown, TODO/FIXME counts
 
 Works with **VS Code**, **Cursor**, **Claude Desktop**, **Windsurf**, and any MCP-compatible client.
@@ -89,7 +91,7 @@ Restart your AI client. Done.
 | `git_status` | Git status: modified, staged, untracked |
 | `git_log` | Recent commit history |
 | `git_diff` | Unstaged changes or diff against a branch/commit |
-| `search_code` | Regex or literal search across the whole project |
+| `search_code` | Regex or literal search across the whole project. Filter by extension |
 | `get_file_context` | Read a file, or a specific line range |
 | `read_file` | Read full contents of any file |
 | `write_file` | Write content to a file (creates directories) |
@@ -103,6 +105,13 @@ Restart your AI client. Done.
 | `check_port` | Check if a TCP port is available or in use |
 | `get_env_file` | Read .env file with secrets masked |
 | `get_code_stats` | Lines of code, language breakdown, TODO/FIXME counts |
+| `generate_commit_message` | AI-powered commit suggestion from git diff (conventional commits) |
+| `git_add` | Stage files for commit |
+| `git_commit` | Commit with a message |
+| `git_branches` | List all branches |
+| `git_checkout` | Switch or create branches |
+| `get_package_scripts` | Auto-detect scripts from package.json/Makefile/Cargo.toml |
+| `run_package_script` | Run a script using detected package manager |
 
 ---
 
@@ -134,6 +143,12 @@ Restart your AI client. Done.
 
 > "Read the .env file and show me the variables (mask secrets)."
 
+> "Generate a commit message for my staged changes."
+
+> "Run the dev script."
+
+> "Search for 'useState' only in .tsx files."
+
 ---
 
 ## Why This Exists
@@ -143,21 +158,27 @@ Most MCP servers are:
 - **Broken on Windows** — they assume bash and Linux paths
 - **Hard to configure** — each needs its own JSON block
 
-MCP DevKit is **one install, one config, 24 tools, works everywhere.**
+MCP DevKit is **one install, one config, 32 tools, works everywhere.**
 
 ---
 
 ## Supported Tech Stacks (Auto-Detected)
 
-- **JavaScript/TypeScript**: React, Next.js, Vue, Angular, Svelte, SvelteKit, Express, NestJS, Remix, Astro, Gatsby, Nuxt, SolidJS, Preact, Vite, Electron
+- **JavaScript/TypeScript**: React, Next.js, Vue, Angular, Svelte, SvelteKit, Express, NestJS, Remix, Astro, Gatsby, Nuxt, SolidJS, Preact, Vite, Electron, Tauri, Capacitor, Ionic
+- **State Management**: Redux, Zustand, Pinia, Jotai
+- **ORM/DB**: Prisma, Drizzle ORM, TypeORM, Sequelize, Mongoose, MongoDB, Supabase, Firebase
+- **API**: GraphQL, tRPC, Socket.IO, WebSocket
 - **Python**: Django, Flask, FastAPI
-- **Rust**: Cargo
-- **Go**: Go Modules
+- **Rust**: Cargo, Axum, Actix, Rocket, Bevy
+- **Go**: Go Modules, Fiber, Gin, Echo, Chi
 - **Java**: Maven, Gradle
 - **.NET**: .csproj / .sln
 - **Ruby**: Bundler, Ruby on Rails
 - **PHP**: Composer, Laravel
-- **DevOps**: Docker, GitHub Actions, GitLab CI, Azure Pipelines, Jenkins
+- **Mobile**: Flutter, Dart, Kotlin, Swift
+- **Game Dev**: Unity, Unreal Engine, Godot
+- **DevOps**: Docker, GitHub Actions, GitLab CI, Azure Pipelines, Jenkins, Terraform, Kubernetes, Ansible, Pulumi
+- **Platforms**: Vercel, Netlify, Cloudflare Workers
 
 ---
 

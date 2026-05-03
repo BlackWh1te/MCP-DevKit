@@ -59,3 +59,44 @@ export async function gitDiff(repoPath?: string, target?: string): Promise<strin
   // Truncate huge diffs
   return out.length > 50000 ? out.slice(0, 50000) + "\n... (truncated)" : out;
 }
+
+export async function gitAdd(files: string | string[], repoPath?: string): Promise<string> {
+  const fileList = Array.isArray(files) ? files : [files];
+  const out = await runGit(["add", ...fileList], repoPath);
+  return out || `Staged ${fileList.length} file(s).`;
+}
+
+export async function gitCommit(message: string, repoPath?: string): Promise<string> {
+  const out = await runGit(["commit", "-m", message], repoPath);
+  return out || "Committed successfully.";
+}
+
+export async function gitBranches(repoPath?: string): Promise<string> {
+  const out = await runGit(
+    ["branch", "-a", "--format=%(refname:short) %(upstream:short) %(HEAD)"],
+    repoPath
+  );
+  if (!out) return "No branches found.";
+
+  const lines = out.split("\n").filter(Boolean);
+  const result = {
+    current: lines.find((l) => l.includes("*"))?.replace("*", "").trim().split(" ")[0] || "?",
+    branches: lines.map((l) => {
+      const isCurrent = l.includes("*");
+      const clean = l.replace("*", "").trim();
+      const parts = clean.split(" ");
+      return {
+        name: parts[0],
+        upstream: parts[1] || null,
+        current: isCurrent,
+      };
+    }),
+  };
+  return JSON.stringify(result, null, 2);
+}
+
+export async function gitCheckout(branch: string, create = false, repoPath?: string): Promise<string> {
+  const args = create ? ["checkout", "-b", branch] : ["checkout", branch];
+  const out = await runGit(args, repoPath);
+  return out || `Switched to ${create ? "new" : ""} branch '${branch}'.`;
+}

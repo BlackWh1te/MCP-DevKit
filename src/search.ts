@@ -74,7 +74,8 @@ export async function searchCode(
   query: string,
   searchPath?: string,
   literal = false,
-  maxResults = 50
+  maxResults = 50,
+  ext?: string
 ): Promise<string> {
   const root = path.resolve(searchPath || process.cwd());
   const results: SearchMatch[] = [];
@@ -104,8 +105,9 @@ export async function searchCode(
     for (const name of entries) {
       if (results.length >= maxResults) break;
       if (SKIP_DIRS.has(name)) continue;
-      const ext = path.extname(name).toLowerCase();
-      if (SKIP_EXTS.has(ext)) continue;
+      const fext = path.extname(name).toLowerCase();
+      if (SKIP_EXTS.has(fext)) continue;
+      if (ext && fext !== ext.toLowerCase() && !name.toLowerCase().endsWith(ext.toLowerCase())) continue;
 
       const full = path.join(dir, name);
       try {

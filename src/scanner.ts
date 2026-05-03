@@ -175,6 +175,175 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     if (pkg && pkg.includes("tailwindcss")) return ["Tailwind CSS"];
     return [];
   },
+  Tauri: (files) =>
+    files.includes("tauri.conf.json") || files.includes("src-tauri/Cargo.toml")
+      ? ["Tauri"]
+      : [],
+  Capacitor: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("@capacitor")) return ["Capacitor"];
+    return [];
+  },
+  Ionic: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("@ionic")) return ["Ionic"];
+    return [];
+  },
+  Flutter: (files) =>
+    files.includes("pubspec.yaml") && files.includes("lib/main.dart")
+      ? ["Flutter"]
+      : [],
+  Dart: (files) =>
+    files.includes("pubspec.yaml") ? ["Dart"] : [],
+  Kotlin: (files) =>
+    files.some((f) => f.endsWith(".kt") || f.endsWith(".kts")) ? ["Kotlin"] : [],
+  Swift: (files) =>
+    files.some((f) => f.endsWith(".swift")) ? ["Swift"] : [],
+  Unity: (files) =>
+    files.some((f) => f.includes("Unity") && f.endsWith(".cs")) ? ["Unity"] : [],
+  Unreal: (files) =>
+    files.some((f) => f.endsWith(".uproject")) ? ["Unreal Engine"] : [],
+  Godot: (files) =>
+    files.some((f) => f.endsWith(".godot") || f.endsWith(".tscn")) ? ["Godot"] : [],
+  Bevy: (_f, contentMap) => {
+    const cargo = contentMap.get("Cargo.toml");
+    if (cargo && cargo.includes("bevy")) return ["Bevy"];
+    return [];
+  },
+  Axum: (_f, contentMap) => {
+    const cargo = contentMap.get("Cargo.toml");
+    if (cargo && cargo.includes("axum")) return ["Axum"];
+    return [];
+  },
+  Actix: (_f, contentMap) => {
+    const cargo = contentMap.get("Cargo.toml");
+    if (cargo && cargo.includes("actix")) return ["Actix"];
+    return [];
+  },
+  Rocket: (_f, contentMap) => {
+    const cargo = contentMap.get("Cargo.toml");
+    if (cargo && cargo.includes("rocket")) return ["Rocket"];
+    return [];
+  },
+  Fiber: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("fiber")) return ["Fiber"];
+    return [];
+  },
+  Gin: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("gin")) return ["Gin"];
+    return [];
+  },
+  Echo: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("echo")) return ["Echo"];
+    return [];
+  },
+  Chi: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("chi")) return ["Chi"];
+    return [];
+  },
+  Zustand: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("zustand")) return ["Zustand"];
+    return [];
+  },
+  Redux: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("redux")) return ["Redux"];
+    return [];
+  },
+  Jotai: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("jotai")) return ["Jotai"];
+    return [];
+  },
+  Pinia: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("pinia")) return ["Pinia"];
+    return [];
+  },
+  Prisma: (files) =>
+    files.includes("prisma/schema.prisma") ? ["Prisma"] : [],
+  Drizzle: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("drizzle")) return ["Drizzle ORM"];
+    return [];
+  },
+  Sequelize: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("sequelize")) return ["Sequelize"];
+    return [];
+  },
+  TypeORM: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("typeorm")) return ["TypeORM"];
+    return [];
+  },
+  Mongoose: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("mongoose")) return ["Mongoose"];
+    return [];
+  },
+  MongoDB: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("mongodb")) return ["MongoDB"];
+    return [];
+  },
+  Firebase: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("firebase")) return ["Firebase"];
+    return [];
+  },
+  Supabase: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("supabase")) return ["Supabase"];
+    return [];
+  },
+  GraphQL: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && (pkg.includes("graphql") || pkg.includes("apollo"))) return ["GraphQL"];
+    return [];
+  },
+  tRPC: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("trpc")) return ["tRPC"];
+    return [];
+  },
+  SocketIO: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("socket.io")) return ["Socket.IO"];
+    return [];
+  },
+  WebSocket: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("ws")) return ["WebSocket"];
+    return [];
+  },
+  Vercel: (files, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && (pkg.includes("vercel") || files.includes("vercel.json"))) return ["Vercel"];
+    return [];
+  },
+  Netlify: (files) =>
+    files.includes("netlify.toml") ? ["Netlify"] : [],
+  Cloudflare: (files, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && (pkg.includes("wrangler") || files.includes("wrangler.toml"))) return ["Cloudflare Workers"];
+    return [];
+  },
+  Terraform: (files) =>
+    files.some((f) => f.endsWith(".tf")) ? ["Terraform"] : [],
+  Kubernetes: (files) =>
+    files.some((f) => f.endsWith(".yaml") && f.includes("k8s")) || files.includes("deployment.yaml")
+      ? ["Kubernetes"]
+      : [],
+  Ansible: (files) =>
+    files.some((f) => f.includes("playbook") && f.endsWith(".yml")) ? ["Ansible"] : [],
+  Pulumi: (files) =>
+    files.includes("Pulumi.yaml") ? ["Pulumi"] : [],
 };
 
 async function canRead(p: string): Promise<boolean> {

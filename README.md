@@ -1,6 +1,6 @@
 # MCP DevKit
 
-> **One MCP server with 47+ tools. Replaces 20+ separate servers.**
+> **One MCP server with 63 tools. Replaces 25+ separate servers.**
 >
 > Stop installing a dozen MCP servers. This one does it all — and actually works on Windows.
 
@@ -14,11 +14,17 @@ MCP DevKit is a unified [Model Context Protocol](https://modelcontextprotocol.io
 - **Complete Git Suite** — 18 tools: status, log, diff, add, commit, branches, checkout, stash, push, pull, merge, rebase, tags, blame, show, remotes, unstage, restore
 - **Code Search** — regex or literal search with extension filtering
 - **HTTP Client** — GET/POST/PUT/DELETE requests from the AI
+- **Web Fetch** — fetch URLs, strip HTML, extract text, get JSON
 - **Process Manager** — list and kill running processes
 - **System Info** — OS, memory, CPU, Node version, environment
 - **Port Checker** — see if a port is in use
 - **Package Scripts** — auto-detect and run npm/yarn/pnpm/bun/make/cargo scripts
 - **Code Stats** — lines of code, language breakdown, TODO/FIXME counts
+- **Utility Tools** — UUID, hash (md5/sha256), base64, URL encode/decode, JSON format
+- **Time & Timezone** — current time, timezone conversion
+- **Sequential Thinking** — chain-of-thought reasoning session with persistence
+- **JSON Database** — simple key-value store with search
+- **File Info & Tree** — metadata and ASCII tree views
 
 Works with **VS Code**, **Cursor**, **Claude Desktop**, **Windsurf**, and any MCP-compatible client.
 
@@ -124,6 +130,23 @@ Restart your AI client. Done.
 | `get_env_file` | Read .env file with secrets masked |
 | `get_code_stats` | Lines of code, language breakdown, TODO/FIXME counts |
 | `generate_commit_message` | AI-powered commit suggestion from git diff (conventional commits) |
+| `generate_uuid` | Generate a random UUID v4 |
+| `hash_text` | Hash text with md5, sha1, sha256, sha512 |
+| `base64_encode` / `base64_decode` | Base64 encode/decode |
+| `url_encode` / `url_decode` | URL encode/decode |
+| `format_json` | Pretty-print and validate JSON |
+| `get_current_time` | Current time, optionally in an IANA timezone |
+| `convert_time` | Convert time between IANA timezones |
+| `think` | Add a thought to a chain-of-thought reasoning session |
+| `get_thoughts` | Retrieve thinking session, optionally filter |
+| `clear_thinking` | Clear the thinking session |
+| `db_set` / `db_get` / `db_delete` | Store, retrieve, delete key-value pairs |
+| `db_list` | List keys in a JSON database |
+| `db_query` | Search database values by content |
+| `fetch_text` | Fetch URL, strip HTML, return clean text |
+| `fetch_json` | Fetch URL and return parsed JSON |
+| `get_file_info` | File/directory metadata: size, dates, permissions |
+| `directory_tree` | ASCII tree view of directory structure |
 | `git_add` | Stage files for commit |
 | `git_commit` | Commit with a message |
 | `git_branches` | List all branches |
@@ -167,6 +190,18 @@ Restart your AI client. Done.
 
 > "Search for 'useState' only in .tsx files."
 
+> "Fetch https://example.com and summarize the content."
+
+> "Generate a UUID for this new API key."
+
+> "Show me an ASCII tree of the src directory."
+
+> "Store this config in the 'settings' database under key 'theme'."
+
+> "What time is it in Tokyo right now?"
+
+> "Let's think through this architecture problem step by step."
+
 ---
 
 ## Why This Exists
@@ -176,7 +211,7 @@ Most MCP servers are:
 - **Broken on Windows** — they assume bash and Linux paths
 - **Hard to configure** — each needs its own JSON block
 
-MCP DevKit is **one install, one config, 47+ tools, works everywhere.**
+MCP DevKit is **one install, one config, 63 tools, works everywhere.**
 
 ---
 

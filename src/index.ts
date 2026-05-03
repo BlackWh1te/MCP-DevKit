@@ -29,6 +29,14 @@ import { getSystemInfo, checkPort, getEnvFile } from "./system.js";
 import { getCodeStats } from "./stats.js";
 import { generateCommitMessage } from "./ai-commit.js";
 import { getPackageScripts, runPackageScript } from "./package-runner.js";
+import {
+  generateUUID, hashText, base64Encode, base64Decode,
+  urlEncode, urlDecode, formatJson,
+  getCurrentTime, convertTime,
+} from "./utils.js";
+import { think, getThoughts, clearThinking } from "./thinking.js";
+import { dbSet, dbGet, dbDelete, dbList, dbQuery } from "./database.js";
+import { fetchText, fetchJson, getFileInfo, directoryTree } from "./web.js";
 
 const server = new Server(
   {
@@ -867,6 +875,227 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["script"],
         },
       },
+      {
+        name: "generate_uuid",
+        description: "Generate a random UUID v4.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "hash_text",
+        description: "Hash text using md5, sha1, sha256, or sha512.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            text: { type: "string", description: "Text to hash" },
+            algorithm: { type: "string", description: "Hash algorithm (default: sha256)", default: "sha256" },
+          },
+          required: ["text"],
+        },
+      },
+      {
+        name: "base64_encode",
+        description: "Base64-encode text.",
+        inputSchema: {
+          type: "object",
+          properties: { text: { type: "string", description: "Text to encode" } },
+          required: ["text"],
+        },
+      },
+      {
+        name: "base64_decode",
+        description: "Base64-decode text.",
+        inputSchema: {
+          type: "object",
+          properties: { text: { type: "string", description: "Base64 string to decode" } },
+          required: ["text"],
+        },
+      },
+      {
+        name: "url_encode",
+        description: "URL-encode a string.",
+        inputSchema: {
+          type: "object",
+          properties: { text: { type: "string", description: "Text to encode" } },
+          required: ["text"],
+        },
+      },
+      {
+        name: "url_decode",
+        description: "URL-decode a string.",
+        inputSchema: {
+          type: "object",
+          properties: { text: { type: "string", description: "URL-encoded text to decode" } },
+          required: ["text"],
+        },
+      },
+      {
+        name: "format_json",
+        description: "Pretty-print and validate JSON.",
+        inputSchema: {
+          type: "object",
+          properties: { text: { type: "string", description: "JSON string to format" } },
+          required: ["text"],
+        },
+      },
+      {
+        name: "get_current_time",
+        description: "Get current time. Optionally specify an IANA timezone (e.g., America/New_York).",
+        inputSchema: {
+          type: "object",
+          properties: { timezone: { type: "string", description: "IANA timezone name (optional)" } },
+        },
+      },
+      {
+        name: "convert_time",
+        description: "Convert a time between IANA timezones.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            time: { type: "string", description: "Time in 24h format (HH:MM)" },
+            sourceTimezone: { type: "string", description: "Source IANA timezone" },
+            targetTimezone: { type: "string", description: "Target IANA timezone" },
+          },
+          required: ["time", "sourceTimezone", "targetTimezone"],
+        },
+      },
+      {
+        name: "think",
+        description: "Sequential thinking tool. Add a thought to a chain-of-thought session. Great for reasoning, planning, debugging.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            thought: { type: "string", description: "Your thought text" },
+            thoughtNumber: { type: "number", description: "Which thought number this is (1, 2, 3...)" },
+            totalThoughts: { type: "number", description: "Estimated total thoughts in chain" },
+            nextThoughtNeeded: { type: "boolean", description: "Whether another thought is needed", default: true },
+            isRevision: { type: "boolean", description: "Is this a revision of a previous thought?", default: false },
+            revisesThought: { type: "number", description: "If revision, which thought number it revises" },
+            branchFromThought: { type: "number", description: "If branching, which thought to branch from" },
+            branchId: { type: "string", description: "Branch identifier" },
+          },
+          required: ["thought", "thoughtNumber", "totalThoughts"],
+        },
+      },
+      {
+        name: "get_thoughts",
+        description: "Retrieve the current thinking session. Optionally filter by keyword or branch.",
+        inputSchema: {
+          type: "object",
+          properties: { filter: { type: "string", description: "Optional keyword or branch ID to filter" } },
+        },
+      },
+      {
+        name: "clear_thinking",
+        description: "Clear the current thinking session.",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "db_set",
+        description: "Store a key-value pair in a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            key: { type: "string", description: "Key" },
+            value: { type: "string", description: "Value (JSON or plain text)" },
+          },
+          required: ["store", "key", "value"],
+        },
+      },
+      {
+        name: "db_get",
+        description: "Retrieve a value from a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            key: { type: "string", description: "Key" },
+          },
+          required: ["store", "key"],
+        },
+      },
+      {
+        name: "db_delete",
+        description: "Delete a key from a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            key: { type: "string", description: "Key" },
+          },
+          required: ["store", "key"],
+        },
+      },
+      {
+        name: "db_list",
+        description: "List keys in a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            prefix: { type: "string", description: "Optional prefix filter" },
+          },
+          required: ["store"],
+        },
+      },
+      {
+        name: "db_query",
+        description: "Search values in a named JSON database by content.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            query: { type: "string", description: "Search query" },
+          },
+          required: ["store", "query"],
+        },
+      },
+      {
+        name: "fetch_text",
+        description: "Fetch a URL and return text content. Strips HTML tags. Supports JSON.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            timeout: { type: "number", description: "Timeout in ms (default: 30000)", default: 30000 },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "fetch_json",
+        description: "Fetch a URL and return parsed JSON.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL to fetch" },
+            timeout: { type: "number", description: "Timeout in ms (default: 30000)", default: 30000 },
+          },
+          required: ["url"],
+        },
+      },
+      {
+        name: "get_file_info",
+        description: "Get detailed file/directory metadata: size, dates, permissions.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: { type: "string", description: "Path to file or directory" },
+          },
+          required: ["filePath"],
+        },
+      },
+      {
+        name: "directory_tree",
+        description: "Display a tree view of a directory structure.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: { type: "string", description: "Directory path (default: current)", default: "." },
+            depth: { type: "number", description: "Max depth (default: 3)", default: 3 },
+          },
+        },
+      },
     ],
   };
 });
@@ -1041,6 +1270,78 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "run_package_script":
       result = await runPackageScript(String(args.script), args.path as string | undefined);
+      break;
+    case "generate_uuid":
+      result = generateUUID();
+      break;
+    case "hash_text":
+      result = hashText(String(args.text), String(args.algorithm ?? "sha256"));
+      break;
+    case "base64_encode":
+      result = base64Encode(String(args.text));
+      break;
+    case "base64_decode":
+      result = base64Decode(String(args.text));
+      break;
+    case "url_encode":
+      result = urlEncode(String(args.text));
+      break;
+    case "url_decode":
+      result = urlDecode(String(args.text));
+      break;
+    case "format_json":
+      result = formatJson(String(args.text));
+      break;
+    case "get_current_time":
+      result = getCurrentTime(args.timezone as string | undefined);
+      break;
+    case "convert_time":
+      result = convertTime(String(args.time), String(args.sourceTimezone), String(args.targetTimezone));
+      break;
+    case "think":
+      result = await think(
+        String(args.thought),
+        Number(args.thoughtNumber),
+        Number(args.totalThoughts),
+        Boolean(args.nextThoughtNeeded ?? true),
+        Boolean(args.isRevision ?? false),
+        args.revisesThought as number | undefined,
+        args.branchFromThought as number | undefined,
+        args.branchId as string | undefined
+      );
+      break;
+    case "get_thoughts":
+      result = await getThoughts(args.filter as string | undefined);
+      break;
+    case "clear_thinking":
+      result = await clearThinking();
+      break;
+    case "db_set":
+      result = await dbSet(String(args.store), String(args.key), String(args.value));
+      break;
+    case "db_get":
+      result = await dbGet(String(args.store), String(args.key));
+      break;
+    case "db_delete":
+      result = await dbDelete(String(args.store), String(args.key));
+      break;
+    case "db_list":
+      result = await dbList(String(args.store), args.prefix as string | undefined);
+      break;
+    case "db_query":
+      result = await dbQuery(String(args.store), String(args.query));
+      break;
+    case "fetch_text":
+      result = await fetchText(String(args.url), Number(args.timeout ?? 30000));
+      break;
+    case "fetch_json":
+      result = await fetchJson(String(args.url), Number(args.timeout ?? 30000));
+      break;
+    case "get_file_info":
+      result = await getFileInfo(String(args.filePath));
+      break;
+    case "directory_tree":
+      result = await directoryTree(String(args.path ?? "."), Number(args.depth ?? 3));
       break;
     default:
       throw new Error(`Unknown tool: ${request.params.name}`);

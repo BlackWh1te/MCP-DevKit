@@ -11,7 +11,16 @@ import {
 import { scanProject, getProjectSummary, explainArchitecture } from "./scanner.js";
 import { remember, recall, listMemories } from "./memory.js";
 import { runCommand } from "./terminal.js";
-import { gitStatus, gitLog, gitDiff, gitAdd, gitCommit, gitBranches, gitCheckout } from "./git-tools.js";
+import {
+  gitStatus, gitLog, gitDiff,
+  gitAdd, gitCommit, gitBranches, gitCheckout,
+  gitStash, gitStashPop, gitStashList,
+  gitUnstage, gitRestore,
+  gitPush, gitPull, gitRemote,
+  gitMerge, gitRebase,
+  gitTags, gitCreateTag,
+  gitBlame, gitShow,
+} from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
 import { readFile, writeFile, editFile, deleteFile, listDirectory } from "./files.js";
 import { httpRequest } from "./http.js";
@@ -560,6 +569,272 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "git_stash",
+        description: "Stash current changes. Optionally provide a message.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "Optional stash message",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_stash_pop",
+        description: "Pop a stash from the stash list. Default pops the most recent (index 0).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            index: {
+              type: "number",
+              description: "Stash index (default: 0)",
+              default: 0,
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_stash_list",
+        description: "List all stashes.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_unstage",
+        description: "Unstage files (remove from staging area but keep changes).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            files: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files to unstage (use ['.'] for all)",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["files"],
+        },
+      },
+      {
+        name: "git_restore",
+        description: "Restore files to their last committed state (discards changes).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            files: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files to restore (use ['.'] for all)",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["files"],
+        },
+      },
+      {
+        name: "git_push",
+        description: "Push commits to a remote repository. Supports force-with-lease for safe force push.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            remote: {
+              type: "string",
+              description: "Remote name (default: origin)",
+            },
+            branch: {
+              type: "string",
+              description: "Branch name",
+            },
+            force: {
+              type: "boolean",
+              description: "Use --force-with-lease (safer than bare force)",
+              default: false,
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_pull",
+        description: "Pull changes from a remote repository.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            remote: {
+              type: "string",
+              description: "Remote name (default: origin)",
+            },
+            branch: {
+              type: "string",
+              description: "Branch name",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_remote",
+        description: "List configured remotes with their fetch/push URLs.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_merge",
+        description: "Merge a branch into the current branch.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            branch: {
+              type: "string",
+              description: "Branch to merge",
+            },
+            noFastForward: {
+              type: "boolean",
+              description: "Create a merge commit even if fast-forward is possible",
+              default: false,
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["branch"],
+        },
+      },
+      {
+        name: "git_rebase",
+        description: "Rebase current branch onto another branch.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            branch: {
+              type: "string",
+              description: "Branch to rebase onto",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["branch"],
+        },
+      },
+      {
+        name: "git_tags",
+        description: "List all tags.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
+        name: "git_create_tag",
+        description: "Create a new tag. Optionally annotate with a message.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Tag name (e.g., v1.0.0)",
+            },
+            message: {
+              type: "string",
+              description: "Optional annotated tag message",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["name"],
+        },
+      },
+      {
+        name: "git_blame",
+        description: "Show who last modified each line of a file (git blame).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file",
+            },
+            startLine: {
+              type: "number",
+              description: "Start line (1-based, optional)",
+            },
+            endLine: {
+              type: "number",
+              description: "End line (inclusive, optional)",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["filePath"],
+        },
+      },
+      {
+        name: "git_show",
+        description: "Show details of a commit: stats, changed files, message.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            commit: {
+              type: "string",
+              description: "Commit hash or ref (e.g., HEAD, abc1234)",
+            },
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+          required: ["commit"],
+        },
+      },
+      {
         name: "get_package_scripts",
         description: "Detect and list available package scripts from package.json, pyproject.toml, Makefile, or Cargo.toml.",
         inputSchema: {
@@ -718,6 +993,48 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "git_checkout":
       result = await gitCheckout(String(args.branch), Boolean(args.create ?? false), args.repoPath as string | undefined);
+      break;
+    case "git_stash":
+      result = await gitStash(args.message as string | undefined, args.repoPath as string | undefined);
+      break;
+    case "git_stash_pop":
+      result = await gitStashPop(Number(args.index ?? 0), args.repoPath as string | undefined);
+      break;
+    case "git_stash_list":
+      result = await gitStashList(args.repoPath as string | undefined);
+      break;
+    case "git_unstage":
+      result = await gitUnstage(args.files as string[], args.repoPath as string | undefined);
+      break;
+    case "git_restore":
+      result = await gitRestore(args.files as string[], args.repoPath as string | undefined);
+      break;
+    case "git_push":
+      result = await gitPush(args.remote as string | undefined, args.branch as string | undefined, Boolean(args.force ?? false), args.repoPath as string | undefined);
+      break;
+    case "git_pull":
+      result = await gitPull(args.remote as string | undefined, args.branch as string | undefined, args.repoPath as string | undefined);
+      break;
+    case "git_remote":
+      result = await gitRemote(args.repoPath as string | undefined);
+      break;
+    case "git_merge":
+      result = await gitMerge(String(args.branch), Boolean(args.noFastForward ?? false), args.repoPath as string | undefined);
+      break;
+    case "git_rebase":
+      result = await gitRebase(String(args.branch), args.repoPath as string | undefined);
+      break;
+    case "git_tags":
+      result = await gitTags(args.repoPath as string | undefined);
+      break;
+    case "git_create_tag":
+      result = await gitCreateTag(String(args.name), args.message as string | undefined, args.repoPath as string | undefined);
+      break;
+    case "git_blame":
+      result = await gitBlame(String(args.filePath), args.startLine as number | undefined, args.endLine as number | undefined, args.repoPath as string | undefined);
+      break;
+    case "git_show":
+      result = await gitShow(String(args.commit), args.repoPath as string | undefined);
       break;
     case "get_package_scripts":
       result = await getPackageScripts(args.path as string | undefined);

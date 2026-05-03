@@ -1,6 +1,6 @@
 # MCP DevKit
 
-> **One MCP server with 32 tools. Replaces 15+ separate servers.**
+> **One MCP server with 47+ tools. Replaces 20+ separate servers.**
 >
 > Stop installing a dozen MCP servers. This one does it all — and actually works on Windows.
 
@@ -11,7 +11,7 @@ MCP DevKit is a unified [Model Context Protocol](https://modelcontextprotocol.io
 - **Persistent Memory** — remembers facts, TODOs, and decisions across sessions
 - **Cross-Platform Terminal** — runs commands on Windows, Mac, and Linux
 - **File CRUD** — read, write, edit, delete files with safety checks
-- **Git Tools** — status, log, diff, add, commit, branches, checkout
+- **Complete Git Suite** — 18 tools: status, log, diff, add, commit, branches, checkout, stash, push, pull, merge, rebase, tags, blame, show, remotes, unstage, restore
 - **Code Search** — regex or literal search with extension filtering
 - **HTTP Client** — GET/POST/PUT/DELETE requests from the AI
 - **Process Manager** — list and kill running processes
@@ -91,6 +91,24 @@ Restart your AI client. Done.
 | `git_status` | Git status: modified, staged, untracked |
 | `git_log` | Recent commit history |
 | `git_diff` | Unstaged changes or diff against a branch/commit |
+| `git_add` | Stage files for commit |
+| `git_commit` | Commit with a message |
+| `git_branches` | List all branches |
+| `git_checkout` | Switch or create branches |
+| `git_stash` | Stash current changes |
+| `git_stash_pop` | Pop a stash |
+| `git_stash_list` | List all stashes |
+| `git_unstage` | Remove files from staging area |
+| `git_restore` | Discard changes, restore to HEAD |
+| `git_push` | Push to remote (with force-with-lease) |
+| `git_pull` | Pull from remote |
+| `git_remote` | List configured remotes |
+| `git_merge` | Merge a branch |
+| `git_rebase` | Rebase onto a branch |
+| `git_tags` | List all tags |
+| `git_create_tag` | Create an annotated tag |
+| `git_blame` | Who last modified each line |
+| `git_show` | Show commit details and stats |
 | `search_code` | Regex or literal search across the whole project. Filter by extension |
 | `get_file_context` | Read a file, or a specific line range |
 | `read_file` | Read full contents of any file |
@@ -158,7 +176,7 @@ Most MCP servers are:
 - **Broken on Windows** — they assume bash and Linux paths
 - **Hard to configure** — each needs its own JSON block
 
-MCP DevKit is **one install, one config, 32 tools, works everywhere.**
+MCP DevKit is **one install, one config, 47+ tools, works everywhere.**
 
 ---
 

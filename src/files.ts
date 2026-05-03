@@ -64,6 +64,50 @@ interface DirEntry {
   size?: number;
 }
 
+export async function moveFile(sourcePath: string, destPath: string): Promise<string> {
+  const src = path.resolve(sourcePath);
+  const dst = path.resolve(destPath);
+  try {
+    await fs.mkdir(path.dirname(dst), { recursive: true });
+    await fs.rename(src, dst);
+    return `Moved: ${src} → ${dst}`;
+  } catch (err: any) {
+    return `Error moving file: ${err.message}`;
+  }
+}
+
+export async function copyFile(sourcePath: string, destPath: string): Promise<string> {
+  const src = path.resolve(sourcePath);
+  const dst = path.resolve(destPath);
+  try {
+    await fs.mkdir(path.dirname(dst), { recursive: true });
+    await fs.copyFile(src, dst, fs.constants.COPYFILE_FICLONE);
+    return `Copied: ${src} → ${dst}`;
+  } catch (err: any) {
+    return `Error copying file: ${err.message}`;
+  }
+}
+
+export async function createDirectory(dirPath: string): Promise<string> {
+  const full = path.resolve(dirPath);
+  try {
+    await fs.mkdir(full, { recursive: true });
+    return `Created directory: ${full}`;
+  } catch (err: any) {
+    return `Error creating directory: ${err.message}`;
+  }
+}
+
+export async function removeDirectory(dirPath: string, recursive = true): Promise<string> {
+  const full = path.resolve(dirPath);
+  try {
+    await fs.rm(full, { recursive, force: true });
+    return `Removed directory: ${full}`;
+  } catch (err: any) {
+    return `Error removing directory: ${err.message}`;
+  }
+}
+
 export async function listDirectory(dirPath: string, maxDepth = 1): Promise<string> {
   const full = path.resolve(dirPath);
   const results: Array<{ path: string; entries: DirEntry[] }> = [];

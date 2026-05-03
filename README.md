@@ -1,6 +1,6 @@
 # MCP DevKit
 
-> **One MCP server with 63 tools. Replaces 25+ separate servers.**
+> **One MCP server with 81 tools. Replaces 25+ separate servers.**
 >
 > Stop installing a dozen MCP servers. This one does it all — and actually works on Windows.
 
@@ -10,7 +10,8 @@ MCP DevKit is a unified [Model Context Protocol](https://modelcontextprotocol.io
 - **AI Commit Messages** — analyzes diff and suggests conventional commits
 - **Persistent Memory** — remembers facts, TODOs, and decisions across sessions
 - **Cross-Platform Terminal** — runs commands on Windows, Mac, and Linux
-- **File CRUD** — read, write, edit, delete files with safety checks
+- **File CRUD** — read, write, edit, delete, move, copy files with safety checks
+- **Directory Operations** — create, remove, list directories with tree views
 - **Complete Git Suite** — 18 tools: status, log, diff, add, commit, branches, checkout, stash, push, pull, merge, rebase, tags, blame, show, remotes, unstage, restore
 - **Code Search** — regex or literal search with extension filtering
 - **HTTP Client** — GET/POST/PUT/DELETE requests from the AI
@@ -25,6 +26,8 @@ MCP DevKit is a unified [Model Context Protocol](https://modelcontextprotocol.io
 - **Sequential Thinking** — chain-of-thought reasoning session with persistence
 - **JSON Database** — simple key-value store with search
 - **File Info & Tree** — metadata and ASCII tree views
+- **Dev Utils** — text diff, regex tester, password generator, JWT decoder, text analysis, color converter, math evaluator
+- **Todo Manager** — create, list, complete, delete todos
 
 Works with **VS Code**, **Cursor**, **Claude Desktop**, **Windsurf**, and any MCP-compatible client.
 
@@ -147,10 +150,21 @@ Restart your AI client. Done.
 | `fetch_json` | Fetch URL and return parsed JSON |
 | `get_file_info` | File/directory metadata: size, dates, permissions |
 | `directory_tree` | ASCII tree view of directory structure |
-| `git_add` | Stage files for commit |
-| `git_commit` | Commit with a message |
-| `git_branches` | List all branches |
-| `git_checkout` | Switch or create branches |
+| `move_file` | Move or rename a file or directory |
+| `copy_file` | Copy a file or directory |
+| `create_directory` | Create a new directory |
+| `remove_directory` | Remove a directory (recursively if non-empty) |
+| `diff_text` | Compare two text strings and show differences |
+| `regex_test` | Test a regular expression against a string |
+| `generate_password` | Generate a secure random password |
+| `jwt_decode` | Decode a JWT token and show its payload |
+| `analyze_text` | Analyze text statistics (word count, character count, sentence count, reading time) |
+| `convert_color` | Convert colors between different formats (hex, rgb, hsl) |
+| `evaluate_math` | Safely evaluate mathematical expressions |
+| `create_todo` | Create a new todo item |
+| `list_todos` | List all todos |
+| `complete_todo` | Mark a todo as completed |
+| `delete_todo` | Delete a todo |
 | `get_package_scripts` | Auto-detect scripts from package.json/Makefile/Cargo.toml |
 | `run_package_script` | Run a script using detected package manager |
 
@@ -202,6 +216,26 @@ Restart your AI client. Done.
 
 > "Let's think through this architecture problem step by step."
 
+> "Compare these two code snippets and show me the differences."
+
+> "Test this regex pattern against my text."
+
+> "Generate a secure 32-character password."
+
+> "Decode this JWT token and show me the payload."
+
+> "Analyze the text statistics of this README."
+
+> "Convert this color from hex to HSL."
+
+> "Evaluate this math expression safely."
+
+> "Create a todo: Fix the login bug with high priority."
+
+> "List all my todos."
+
+> "Mark todo #5 as completed."
+
 ---
 
 ## Why This Exists
@@ -211,7 +245,7 @@ Most MCP servers are:
 - **Broken on Windows** — they assume bash and Linux paths
 - **Hard to configure** — each needs its own JSON block
 
-MCP DevKit is **one install, one config, 63 tools, works everywhere.**
+MCP DevKit is **one install, one config, 81 tools, works everywhere.**
 
 ---
 

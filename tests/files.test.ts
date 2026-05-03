@@ -1,6 +1,6 @@
 // BlackWhite — MCP DevKit
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFile, writeFile, editFile, deleteFile, listDirectory } from "../src/files.js";
+import { readFile, writeFile, editFile, deleteFile, listDirectory, moveFile, copyFile, createDirectory, removeDirectory } from "../src/files.js";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
@@ -60,5 +60,45 @@ describe("files", () => {
     await writeFile(delFile, "bye");
     const result = await deleteFile(delFile);
     expect(result).toContain("Deleted");
+  });
+
+  it("moves a file", async () => {
+    const sourceFile = path.join(tmpDir, "to-move.txt");
+    const destFile = path.join(tmpDir, "moved.txt");
+    await writeFile(sourceFile, "move me");
+    const result = await moveFile(sourceFile, destFile);
+    expect(result).toContain("Moved");
+
+    const content = await readFile(destFile);
+    expect(content).toBe("move me");
+  });
+
+  it("copies a file", async () => {
+    const sourceFile = path.join(tmpDir, "to-copy.txt");
+    const destFile = path.join(tmpDir, "copied.txt");
+    await writeFile(sourceFile, "copy me");
+    const result = await copyFile(sourceFile, destFile);
+    expect(result).toContain("Copied");
+
+    const content = await readFile(destFile);
+    expect(content).toBe("copy me");
+  });
+
+  it("creates a directory", async () => {
+    const newDir = path.join(tmpDir, "new-directory");
+    const result = await createDirectory(newDir);
+    expect(result).toContain("Created");
+
+    const stat = await fs.stat(newDir);
+    expect(stat.isDirectory()).toBe(true);
+  });
+
+  it("removes a directory", async () => {
+    const newDir = path.join(tmpDir, "to-remove");
+    await createDirectory(newDir);
+    const result = await removeDirectory(newDir, true);
+    expect(result).toContain("Removed");
+
+    await expect(fs.stat(newDir)).rejects.toThrow();
   });
 });

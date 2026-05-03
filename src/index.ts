@@ -22,7 +22,7 @@ import {
   gitBlame, gitShow,
 } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
-import { readFile, writeFile, editFile, deleteFile, listDirectory } from "./files.js";
+import { readFile, writeFile, editFile, deleteFile, moveFile, copyFile, createDirectory, removeDirectory, listDirectory } from "./files.js";
 import { httpRequest } from "./http.js";
 import { listProcesses, killProcess } from "./process.js";
 import { getSystemInfo, checkPort, getEnvFile } from "./system.js";
@@ -37,6 +37,11 @@ import {
 import { think, getThoughts, clearThinking } from "./thinking.js";
 import { dbSet, dbGet, dbDelete, dbList, dbQuery } from "./database.js";
 import { fetchText, fetchJson, getFileInfo, directoryTree } from "./web.js";
+import {
+  diffText, regexTest, generatePassword, jwtDecode,
+  analyzeText, convertColor, evaluateMath,
+} from "./dev-utils.js";
+import { createTodo, listTodos, completeTodo, deleteTodo } from "./todos.js";
 
 const server = new Server(
   {
@@ -1096,6 +1101,179 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: "move_file",
+        description: "Move or rename a file or directory.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            source: { type: "string", description: "Source path" },
+            destination: { type: "string", description: "Destination path" },
+          },
+          required: ["source", "destination"],
+        },
+      },
+      {
+        name: "copy_file",
+        description: "Copy a file or directory.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            source: { type: "string", description: "Source path" },
+            destination: { type: "string", description: "Destination path" },
+          },
+          required: ["source", "destination"],
+        },
+      },
+      {
+        name: "create_directory",
+        description: "Create a new directory.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: { type: "string", description: "Directory path to create" },
+          },
+          required: ["path"],
+        },
+      },
+      {
+        name: "remove_directory",
+        description: "Remove a directory (recursively if non-empty).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: { type: "string", description: "Directory path to remove" },
+            recursive: { type: "boolean", description: "Remove recursively (default: false)", default: false },
+          },
+          required: ["path"],
+        },
+      },
+      {
+        name: "diff_text",
+        description: "Compare two text strings and show differences.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            text1: { type: "string", description: "First text" },
+            text2: { type: "string", description: "Second text" },
+            contextLines: { type: "number", description: "Context lines to show (default: 3)", default: 3 },
+          },
+          required: ["text1", "text2"],
+        },
+      },
+      {
+        name: "regex_test",
+        description: "Test a regular expression against a string.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pattern: { type: "string", description: "Regex pattern" },
+            text: { type: "string", description: "Text to test against" },
+            flags: { type: "string", description: "Regex flags (g, i, m, etc.)", default: "" },
+          },
+          required: ["pattern", "text"],
+        },
+      },
+      {
+        name: "generate_password",
+        description: "Generate a secure random password.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            length: { type: "number", description: "Password length (default: 16)", default: 16 },
+            includeUppercase: { type: "boolean", description: "Include uppercase letters (default: true)", default: true },
+            includeLowercase: { type: "boolean", description: "Include lowercase letters (default: true)", default: true },
+            includeNumbers: { type: "boolean", description: "Include numbers (default: true)", default: true },
+            includeSymbols: { type: "boolean", description: "Include symbols (default: true)", default: true },
+          },
+        },
+      },
+      {
+        name: "jwt_decode",
+        description: "Decode a JWT token and show its payload.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            token: { type: "string", description: "JWT token to decode" },
+          },
+          required: ["token"],
+        },
+      },
+      {
+        name: "analyze_text",
+        description: "Analyze text statistics (word count, character count, sentence count, reading time).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            text: { type: "string", description: "Text to analyze" },
+          },
+          required: ["text"],
+        },
+      },
+      {
+        name: "convert_color",
+        description: "Convert colors between different formats (hex, rgb, hsl). Returns all formats.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            color: { type: "string", description: "Color to convert (e.g., '#ff0000', 'rgb(255,0,0)')" },
+          },
+          required: ["color"],
+        },
+      },
+      {
+        name: "evaluate_math",
+        description: "Safely evaluate mathematical expressions.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            expression: { type: "string", description: "Mathematical expression to evaluate" },
+          },
+          required: ["expression"],
+        },
+      },
+      {
+        name: "create_todo",
+        description: "Create a new todo item.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            text: { type: "string", description: "Todo text" },
+            priority: { type: "string", description: "Priority (low, medium, high)", default: "medium" },
+          },
+          required: ["text"],
+        },
+      },
+      {
+        name: "list_todos",
+        description: "List all todos.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "complete_todo",
+        description: "Mark a todo as completed.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "number", description: "Todo ID" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "delete_todo",
+        description: "Delete a todo.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "number", description: "Todo ID" },
+          },
+          required: ["id"],
+        },
+      },
     ],
   };
 });
@@ -1342,6 +1520,59 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "directory_tree":
       result = await directoryTree(String(args.path ?? "."), Number(args.depth ?? 3));
+      break;
+    case "move_file":
+      result = await moveFile(String(args.source), String(args.destination));
+      break;
+    case "copy_file":
+      result = await copyFile(String(args.source), String(args.destination));
+      break;
+    case "create_directory":
+      result = await createDirectory(String(args.path));
+      break;
+    case "remove_directory":
+      result = await removeDirectory(String(args.path), Boolean(args.recursive ?? false));
+      break;
+    case "diff_text":
+      result = diffText(String(args.text1), String(args.text2), Number(args.contextLines ?? 3));
+      break;
+    case "regex_test":
+      result = regexTest(String(args.pattern), String(args.text), String(args.flags ?? ""));
+      break;
+    case "generate_password":
+      result = generatePassword(
+        Number(args.length ?? 16),
+        {
+          uppercase: Boolean(args.includeUppercase ?? true),
+          lowercase: Boolean(args.includeLowercase ?? true),
+          numbers: Boolean(args.includeNumbers ?? true),
+          symbols: Boolean(args.includeSymbols ?? true),
+        }
+      );
+      break;
+    case "jwt_decode":
+      result = jwtDecode(String(args.token));
+      break;
+    case "analyze_text":
+      result = analyzeText(String(args.text));
+      break;
+    case "convert_color":
+      result = convertColor(String(args.color));
+      break;
+    case "evaluate_math":
+      result = evaluateMath(String(args.expression));
+      break;
+    case "create_todo":
+      result = await createTodo(String(args.text), (args.priority as "low" | "medium" | "high" | undefined) ?? "medium");
+      break;
+    case "list_todos":
+      result = await listTodos();
+      break;
+    case "complete_todo":
+      result = await completeTodo(String(args.id));
+      break;
+    case "delete_todo":
+      result = await deleteTodo(String(args.id));
       break;
     default:
       throw new Error(`Unknown tool: ${request.params.name}`);

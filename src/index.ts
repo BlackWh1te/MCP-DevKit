@@ -65,6 +65,7 @@ import {
   createDirectory,
   removeDirectory,
   listDirectory,
+  diffFiles,
 } from "./files.js";
 import {
   httpRequest,
@@ -106,7 +107,7 @@ import {
   convertTime,
 } from "./utils.js";
 import { think, getThoughts, clearThinking } from "./thinking.js";
-import { dbSet, dbGet, dbDelete, dbList, dbQuery } from "./database.js";
+import { dbSet, dbGet, dbDelete, dbList, dbQuery, dbBatchSet, dbBatchGet, dbClearStore } from "./database.js";
 import {
   fetchText,
   fetchJson,
@@ -124,6 +125,9 @@ import {
   analyzeText,
   convertColor,
   evaluateMath,
+  csvParse,
+  csvFormat,
+  markdownTable,
 } from "./dev-utils.js";
 import { createTodo, listTodos, completeTodo, deleteTodo } from "./todos.js";
 import {
@@ -1724,6 +1728,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "db_batch_set",
+        description: "Batch set multiple key-value pairs in a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            entries: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  key: { type: "string", description: "Key" },
+                  value: { type: "string", description: "Value (JSON or plain text)" },
+                },
+                required: ["key", "value"],
+              },
+              description: "Array of {key, value} objects",
+            },
+          },
+          required: ["store", "entries"],
+        },
+      },
+      {
+        name: "db_batch_get",
+        description: "Batch get multiple keys from a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+            keys: {
+              type: "array",
+              items: { type: "string" },
+              description: "Array of keys to retrieve",
+            },
+          },
+          required: ["store", "keys"],
+        },
+      },
+      {
+        name: "db_clear_store",
+        description: "Clear all keys in a named JSON database.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            store: { type: "string", description: "Database/store name" },
+          },
+          required: ["store"],
+        },
+      },
+      {
         name: "fetch_text",
         description: "Fetch a URL and return text content. Strips HTML tags. Supports JSON.",
         inputSchema: {
@@ -1948,6 +2002,63 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             expression: { type: "string", description: "Mathematical expression to evaluate" },
           },
           required: ["expression"],
+        },
+      },
+      {
+        name: "csv_parse",
+        description: "Parse CSV text to JSON with support for quoted fields and custom delimiters.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            csvText: { type: "string", description: "CSV text to parse" },
+            delimiter: { type: "string", description: "Delimiter character (default: comma)", default: "," },
+            hasHeader: { type: "boolean", description: "First row is header (default: true)", default: true },
+          },
+          required: ["csvText"],
+        },
+      },
+      {
+        name: "csv_format",
+        description: "Convert JSON array to CSV with proper escaping and custom delimiters.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            data: {
+              type: "array",
+              items: { type: "object" },
+              description: "JSON array of objects to convert",
+            },
+            delimiter: { type: "string", description: "Delimiter character (default: comma)", default: "," },
+          },
+          required: ["data"],
+        },
+      },
+      {
+        name: "markdown_table",
+        description: "Convert JSON array to markdown table with auto-calculated column widths.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            data: {
+              type: "array",
+              items: { type: "object" },
+              description: "JSON array of objects to convert",
+            },
+          },
+          required: ["data"],
+        },
+      },
+      {
+        name: "diff_files",
+        description: "Compare two files directly and show differences.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath1: { type: "string", description: "Path to first file" },
+            filePath2: { type: "string", description: "Path to second file" },
+            contextLines: { type: "number", description: "Context lines to show (default: 3)", default: 3 },
+          },
+          required: ["filePath1", "filePath2"],
         },
       },
       {
@@ -2840,6 +2951,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "db_query":
       result = await dbQuery(String(args.store), String(args.query));
       break;
+    case "db_batch_set":
+      result = await dbBatchSet(String(args.store), args.entries as Array<{ key: string; value: string }>);
+      break;
+    case "db_batch_get":
+      result = await dbBatchGet(String(args.store), args.keys as string[]);
+      break;
+    case "db_clear_store":
+      result = await dbClearStore(String(args.store));
+      break;
     case "fetch_text":
       result = await fetchText(String(args.url), Number(args.timeout ?? 30000));
       break;
@@ -2905,6 +3025,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "evaluate_math":
       result = evaluateMath(String(args.expression));
+      break;
+    case "csv_parse":
+      result = csvParse(String(args.csvText), String(args.delimiter ?? ","), Boolean(args.hasHeader ?? true));
+      break;
+    case "csv_format":
+      result = csvFormat(args.data as Record<string, unknown>[], String(args.delimiter ?? ","));
+      break;
+    case "markdown_table":
+      result = markdownTable(args.data as Record<string, unknown>[]);
+      break;
+    case "diff_files":
+      result = await diffFiles(String(args.filePath1), String(args.filePath2), Number(args.contextLines ?? 3));
       break;
     case "create_todo":
       result = await createTodo(

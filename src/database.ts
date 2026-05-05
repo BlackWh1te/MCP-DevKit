@@ -63,5 +63,44 @@ export async function dbQuery(store: string, query: string): Promise<string> {
     const str = JSON.stringify(v).toLowerCase();
     if (str.includes(query.toLowerCase())) results[k] = v;
   }
-  return JSON.stringify({ store, query, matches: Object.keys(results), count: Object.keys(results).length, results }, null, 2);
+  return JSON.stringify(
+    { store, query, matches: Object.keys(results), count: Object.keys(results).length, results },
+    null,
+    2,
+  );
+}
+
+export async function dbBatchSet(store: string, entries: Array<{ key: string; value: string }>): Promise<string> {
+  const db = await loadDb(store);
+  let count = 0;
+  for (const { key, value } of entries) {
+    try {
+      db[key] = JSON.parse(value);
+    } catch {
+      db[key] = value;
+    }
+    count++;
+  }
+  await saveDb(store, db);
+  return `Batch set ${count} entries in store '${store}'.`;
+}
+
+export async function dbBatchGet(store: string, keys: string[]): Promise<string> {
+  const db = await loadDb(store);
+  const results: Array<{ key: string; value: unknown; found: boolean }> = [];
+  let found = 0;
+  for (const key of keys) {
+    if (key in db) {
+      results.push({ key, value: db[key], found: true });
+      found++;
+    } else {
+      results.push({ key, value: null, found: false });
+    }
+  }
+  return JSON.stringify({ store, requested: keys.length, found, results }, null, 2);
+}
+
+export async function dbClearStore(store: string): Promise<string> {
+  await saveDb(store, {});
+  return `Cleared all keys from store '${store}'.`;
 }

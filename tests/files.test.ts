@@ -1,6 +1,17 @@
 // BlackWhite — MCP DevKit
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFile, writeFile, editFile, deleteFile, listDirectory, moveFile, copyFile, createDirectory, removeDirectory } from "../src/files.js";
+import {
+  readFile,
+  writeFile,
+  editFile,
+  deleteFile,
+  listDirectory,
+  moveFile,
+  copyFile,
+  createDirectory,
+  removeDirectory,
+  diffFiles,
+} from "../src/files.js";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
@@ -100,5 +111,26 @@ describe("files", () => {
     expect(result).toContain("Removed");
 
     await expect(fs.stat(newDir)).rejects.toThrow();
+  });
+
+  it("diffs two files", async () => {
+    const file1 = path.join(tmpDir, "file1.txt");
+    const file2 = path.join(tmpDir, "file2.txt");
+    await writeFile(file1, "hello world\nfoo bar");
+    await writeFile(file2, "hello there\nfoo bar");
+
+    const result = await diffFiles(file1, file2, 3);
+    expect(result).toContain("hello");
+    expect(typeof result).toBe("string");
+  });
+
+  it("diffs identical files", async () => {
+    const file1 = path.join(tmpDir, "identical1.txt");
+    const file2 = path.join(tmpDir, "identical2.txt");
+    await writeFile(file1, "same content");
+    await writeFile(file2, "same content");
+
+    const result = await diffFiles(file1, file2, 3);
+    expect(result).toContain("No differences");
   });
 });

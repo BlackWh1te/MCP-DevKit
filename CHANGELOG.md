@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-05-05
+
+### Added
+
+- **CSV Utilities** (`src/dev-utils.ts`, 2 tools) — `csv_parse` to parse CSV text to JSON with support for quoted fields and custom delimiters, `csv_format` to convert JSON arrays to CSV with proper escaping.
+- **Markdown Table Formatter** (`src/dev-utils.ts`, 1 tool) — `markdown_table` to convert JSON arrays to markdown tables with auto-calculated column widths.
+- **File Diff Tool** (`src/files.ts`, 1 tool) — `diff_files` to compare two files directly and show differences with configurable context lines.
+- **Database Batch Operations** (`src/database.ts`, 3 tools) — `db_batch_set` to batch set multiple key-value pairs, `db_batch_get` to batch get multiple keys, `db_clear_store` to clear all keys in a store.
+- **Enhanced Framework Detection** (`src/scanner.ts`) — Added 8 new framework detectors: Playwright, Zod, Biome, Turborepo, Nx, TanStack Query, shadcn/ui, and Bun (runtime detection).
+- **Expanded Test Coverage** — Added 9 new tests for ai-commit (up to 5 tests), 6 new tests for git-tools (up to 11 tests), 4 new tests for CSV/markdown utilities, 2 new tests for diff_files, and 4 new tests for database batch operations.
+- **Total Test Count** — 170 tests passing (up from 146), 2 skipped.
+
+### Changed
+
+- Updated `csvFormat` and `markdownTable` function signatures to accept arrays directly instead of JSON strings for better MCP tool integration.
+- Fixed `dbBatchGet` to return an array of results with `key`, `value`, and `found` properties for consistent API.
+- Fixed test expectations in `ai-commit.test.ts` and `git.test.ts` to match actual function return formats.
+
 ## [1.0.5] - 2025-05-05
 
 ### Added

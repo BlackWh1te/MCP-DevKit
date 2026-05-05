@@ -555,3 +555,91 @@ export function evaluateMath(expression: string): string {
     return JSON.stringify({ error: `Error evaluating expression: ${err.message}` }, null, 2);
   }
 }
+
+// ─── CSV Utilities ───────────────────
+
+export function csvParse(csvText: string, delimiter = ",", hasHeader = true): string {
+  const lines = csvText.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return JSON.stringify({ rows: [], headers: [], count: 0 }, null, 2);
+
+  const parseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (const char of line) {
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = hasHeader ? parseLine(lines[0]) : lines[0].split(delimiter).map((_, i) => `col${i}`);
+  const rows = hasHeader ? lines.slice(1) : lines;
+
+  const parsed = rows.map((line) => {
+    const values = parseLine(line);
+    const row: Record<string, string> = {};
+    for (let i = 0; i < headers.length; i++) {
+      row[headers[i]] = values[i] ?? "";
+    }
+    return row;
+  });
+
+  return JSON.stringify({ headers, rows: parsed, count: parsed.length }, null, 2);
+}
+
+export function csvFormat(data: Array<Record<string, unknown>>, delimiter = ","): string {
+  try {
+    const parsed = data;
+    if (!Array.isArray(parsed) || parsed.length === 0) return "Error: Input must be a non-empty JSON array of objects.";
+
+    const headers = Object.keys(parsed[0]);
+    const escape = (val: string): string => {
+      const s = String(val);
+      if (s.includes(delimiter) || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const lines: string[] = [headers.join(delimiter)];
+    for (const row of parsed) {
+      lines.push(headers.map((h) => escape(String(row[h] ?? ""))).join(delimiter));
+    }
+    return lines.join("\n");
+  } catch {
+    return "Error: Invalid JSON array input.";
+  }
+}
+
+// ─── Markdown Table ──────────────────
+
+export function markdownTable(data: Array<Record<string, unknown>>): string {
+  try {
+    const parsed = data;
+    if (!Array.isArray(parsed) || parsed.length === 0) return "";
+
+    const headers = Object.keys(parsed[0]);
+    const widths = headers.map((h) => Math.max(h.length, ...parsed.map((r) => String(r[h] ?? "").length)));
+
+    const pad = (text: string, width: number) => text.padEnd(width, " ");
+    const rowLine = (cells: string[]) => "| " + cells.map((c, i) => pad(c, widths[i])).join(" | ") + " |";
+
+    const lines: string[] = [];
+    lines.push(rowLine(headers));
+    lines.push("| " + headers.map((_, i) => "-".repeat(widths[i] + 2)).join(" | ") + " |");
+    for (const row of parsed) {
+      lines.push(rowLine(headers.map((h) => String(row[h] ?? ""))));
+    }
+    return lines.join("\n");
+  } catch {
+    return "Error: Invalid JSON array input.";
+  }
+}

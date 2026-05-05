@@ -8,6 +8,9 @@ import {
   analyzeText,
   convertColor,
   evaluateMath,
+  csvParse,
+  csvFormat,
+  markdownTable,
 } from "../src/dev-utils.js";
 
 describe("Dev Utils", () => {
@@ -118,6 +121,89 @@ describe("Dev Utils", () => {
       const result = evaluateMath("invalid");
       const parsed = JSON.parse(result);
       expect(parsed.error).toBeTruthy();
+    });
+  });
+
+  describe("csvParse", () => {
+    it("should parse simple CSV with header", () => {
+      const csv = "name,age,city\nJohn,30,New York\nJane,25,London";
+      const result = csvParse(csv, ",", true);
+      const parsed = JSON.parse(result);
+      expect(parsed.rows).toHaveLength(2);
+      expect(parsed.rows[0]).toHaveProperty("name", "John");
+    });
+
+    it("should parse CSV without header", () => {
+      const csv = "John,30,New York\nJane,25,London";
+      const result = csvParse(csv, ",", false);
+      const parsed = JSON.parse(result);
+      expect(parsed.rows).toHaveLength(2);
+    });
+
+    it("should handle quoted fields", () => {
+      const csv = 'name,address\nJohn,"123 Main St, Apt 4"\nJane,"456 Oak Ave"';
+      const result = csvParse(csv, ",", true);
+      const parsed = JSON.parse(result);
+      expect(parsed.rows[0].address).toBe("123 Main St, Apt 4");
+    });
+
+    it("should handle custom delimiter", () => {
+      const csv = "name;age;city\nJohn;30;New York";
+      const result = csvParse(csv, ";", true);
+      const parsed = JSON.parse(result);
+      expect(parsed.rows[0].name).toBe("John");
+    });
+  });
+
+  describe("csvFormat", () => {
+    it("should format JSON array to CSV", () => {
+      const data = [
+        { name: "John", age: 30, city: "New York" },
+        { name: "Jane", age: 25, city: "London" },
+      ];
+      const result = csvFormat(data, ",");
+      expect(result).toContain("name,age,city");
+      expect(result).toContain("John,30,New York");
+    });
+
+    it("should handle fields with commas", () => {
+      const data = [{ name: "John", address: "123 Main St, Apt 4" }];
+      const result = csvFormat(data, ",");
+      expect(result).toContain('"123 Main St, Apt 4"');
+    });
+
+    it("should handle custom delimiter", () => {
+      const data = [{ name: "John", age: 30 }];
+      const result = csvFormat(data, ";");
+      expect(result).toContain("name;age");
+    });
+  });
+
+  describe("markdownTable", () => {
+    it("should convert JSON array to markdown table", () => {
+      const data = [
+        { name: "John", age: 30, city: "New York" },
+        { name: "Jane", age: 25, city: "London" },
+      ];
+      const result = markdownTable(data);
+      expect(result).toContain("name");
+      expect(result).toContain("age");
+      expect(result).toContain("city");
+      expect(result).toContain("John");
+      expect(result).toContain("Jane");
+      expect(result).toContain("---");
+    });
+
+    it("should handle empty array", () => {
+      const result = markdownTable([]);
+      expect(result).toBe("");
+    });
+
+    it("should handle single object", () => {
+      const data = [{ name: "John", age: 30 }];
+      const result = markdownTable(data);
+      expect(result).toContain("name");
+      expect(result).toContain("age");
     });
   });
 });

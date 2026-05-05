@@ -2,6 +2,7 @@
 import { promises as fs, constants } from "fs";
 import { createHash } from "crypto";
 import path from "path";
+import { diffText } from "./dev-utils.js";
 
 export async function readFile(filePath: string): Promise<string> {
   const full = path.resolve(filePath);
@@ -183,12 +184,14 @@ export async function batchFileOperations(operations: BatchOperation[]): Promise
     try {
       switch (op.type) {
         case "write":
-          result = op.content !== undefined ? await writeFile(op.filePath, op.content) : `Error: content required for write`;
+          result =
+            op.content !== undefined ? await writeFile(op.filePath, op.content) : `Error: content required for write`;
           break;
         case "edit":
-          result = op.oldString !== undefined && op.newString !== undefined
-            ? await editFile(op.filePath, op.oldString, op.newString)
-            : `Error: oldString and newString required for edit`;
+          result =
+            op.oldString !== undefined && op.newString !== undefined
+              ? await editFile(op.filePath, op.oldString, op.newString)
+              : `Error: oldString and newString required for edit`;
           break;
         case "delete":
           result = await deleteFile(op.filePath);
@@ -234,7 +237,9 @@ export async function findDuplicateFiles(dirPath?: string, maxFiles = 500): Prom
     let entries: string[];
     try {
       entries = await fs.readdir(dir);
-    } catch { return; }
+    } catch {
+      return;
+    }
 
     for (const name of entries) {
       if (name.startsWith(".") || name === "node_modules" || name === "dist" || name === "build") continue;
@@ -254,7 +259,9 @@ export async function findDuplicateFiles(dirPath?: string, maxFiles = 500): Prom
             hashes.set(hash, { hash, files: [{ path: full, size: stat.size }] });
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -398,48 +405,113 @@ function getCommentPatterns(ext: string): RegExp[] {
   const pyLike = [new RegExp("^#"), new RegExp('^"""'), new RegExp("^'''")];
   const htmlLike = [new RegExp("^<!--"), new RegExp("^\\s*-->")];
   const map: Record<string, RegExp[]> = {
-    ".ts": jsLike, ".tsx": jsLike, ".js": jsLike, ".jsx": jsLike,
-    ".py": pyLike, ".rb": [new RegExp("^#")], ".sh": [new RegExp("^#")], ".bash": [new RegExp("^#")],
-    ".go": [new RegExp("^\\\\/\\\\/")], ".rs": [new RegExp("^\\\\/\\\\/"), new RegExp("^\\\\/\\*")],
-    ".java": jsLike, ".kt": jsLike, ".cs": jsLike,
-    ".c": jsLike, ".cpp": jsLike, ".h": jsLike,
-    ".swift": [new RegExp("^\\\\/\\\\/")], ".php": [new RegExp("^\\\\/\\\\/"), new RegExp("^#"), new RegExp("^\\\\/\\*")],
-    ".html": htmlLike, ".xml": htmlLike, ".vue": htmlLike,
-    ".css": [new RegExp("^\\\\/\\*")], ".scss": [new RegExp("^\\\\/\\\\/"), new RegExp("^\\\\/\\*")],
+    ".ts": jsLike,
+    ".tsx": jsLike,
+    ".js": jsLike,
+    ".jsx": jsLike,
+    ".py": pyLike,
+    ".rb": [new RegExp("^#")],
+    ".sh": [new RegExp("^#")],
+    ".bash": [new RegExp("^#")],
+    ".go": [new RegExp("^\\\\/\\\\/")],
+    ".rs": [new RegExp("^\\\\/\\\\/"), new RegExp("^\\\\/\\*")],
+    ".java": jsLike,
+    ".kt": jsLike,
+    ".cs": jsLike,
+    ".c": jsLike,
+    ".cpp": jsLike,
+    ".h": jsLike,
+    ".swift": [new RegExp("^\\\\/\\\\/")],
+    ".php": [new RegExp("^\\\\/\\\\/"), new RegExp("^#"), new RegExp("^\\\\/\\*")],
+    ".html": htmlLike,
+    ".xml": htmlLike,
+    ".vue": htmlLike,
+    ".css": [new RegExp("^\\\\/\\*")],
+    ".scss": [new RegExp("^\\\\/\\\\/"), new RegExp("^\\\\/\\*")],
   };
   return map[ext] || [];
 }
 
 function getFunctionPattern(ext: string): RegExp | null {
   const map: Record<string, RegExp> = {
-    ".ts": /^(export\s+)?(async\s+)?function\s+\w+/, ".tsx": /^(export\s+)?(async\s+)?function\s+\w+/,
-    ".js": /^(export\s+)?(async\s+)?function\s+\w+/, ".jsx": /^(export\s+)?(async\s+)?function\s+\w+/,
-    ".py": /^def\s+\w+/, ".rb": /^def\s+\w+/, ".php": /^(function|public\s+function|private\s+function)\s+\w+/,
-    ".go": /^func\s+\w+/, ".rs": /^fn\s+\w+/, ".swift": /^func\s+\w+/,
-    ".java": /^(public|private|protected)?\s*(static)?\s*\w+\s+\w+\s*\(/, ".kt": /^fun\s+\w+/,
-    ".c": /^\w+\s+\w+\s*\(/, ".cpp": /^\w+\s+\w+\s*\(/, ".h": /^\w+\s+\w+\s*\(/,
+    ".ts": /^(export\s+)?(async\s+)?function\s+\w+/,
+    ".tsx": /^(export\s+)?(async\s+)?function\s+\w+/,
+    ".js": /^(export\s+)?(async\s+)?function\s+\w+/,
+    ".jsx": /^(export\s+)?(async\s+)?function\s+\w+/,
+    ".py": /^def\s+\w+/,
+    ".rb": /^def\s+\w+/,
+    ".php": /^(function|public\s+function|private\s+function)\s+\w+/,
+    ".go": /^func\s+\w+/,
+    ".rs": /^fn\s+\w+/,
+    ".swift": /^func\s+\w+/,
+    ".java": /^(public|private|protected)?\s*(static)?\s*\w+\s+\w+\s*\(/,
+    ".kt": /^fun\s+\w+/,
+    ".c": /^\w+\s+\w+\s*\(/,
+    ".cpp": /^\w+\s+\w+\s*\(/,
+    ".h": /^\w+\s+\w+\s*\(/,
   };
   return map[ext] || null;
 }
 
 function getClassPattern(ext: string): RegExp | null {
   const map: Record<string, RegExp> = {
-    ".ts": /^(export\s+)?class\s+\w+/, ".tsx": /^(export\s+)?class\s+\w+/,
-    ".js": /^(export\s+)?class\s+\w+/, ".jsx": /^(export\s+)?class\s+\w+/,
-    ".py": /^class\s+\w+/, ".rb": /^class\s+\w+/, ".php": /^(class|interface|trait)\s+\w+/,
-    ".java": /^\s*(public\s+)?(abstract\s+)?class\s+\w+/, ".kt": /^(class|data\s+class|object)\s+\w+/,
-    ".rs": /^(struct|enum|trait)\s+\w+/, ".swift": /^(class|struct|enum)\s+\w+/,
-    ".cpp": /^(class|struct)\s+\w+/, ".h": /^(class|struct)\s+\w+/,
+    ".ts": /^(export\s+)?class\s+\w+/,
+    ".tsx": /^(export\s+)?class\s+\w+/,
+    ".js": /^(export\s+)?class\s+\w+/,
+    ".jsx": /^(export\s+)?class\s+\w+/,
+    ".py": /^class\s+\w+/,
+    ".rb": /^class\s+\w+/,
+    ".php": /^(class|interface|trait)\s+\w+/,
+    ".java": /^\s*(public\s+)?(abstract\s+)?class\s+\w+/,
+    ".kt": /^(class|data\s+class|object)\s+\w+/,
+    ".rs": /^(struct|enum|trait)\s+\w+/,
+    ".swift": /^(class|struct|enum)\s+\w+/,
+    ".cpp": /^(class|struct)\s+\w+/,
+    ".h": /^(class|struct)\s+\w+/,
   };
   return map[ext] || null;
 }
 
 function getImportPattern(ext: string): RegExp | null {
   const map: Record<string, RegExp> = {
-    ".ts": /^import\s+/, ".tsx": /^import\s+/, ".js": /^import\s+/, ".jsx": /^import\s+/,
-    ".py": /^(import|from)\s+/, ".rb": /^require\s+/, ".php": /^(require|include|use)\s+/,
-    ".go": /^import\s+/, ".rs": /^use\s+/, ".java": /^import\s+/, ".kt": /^import\s+/,
-    ".swift": /^import\s+/, ".c": /^#include\s+/, ".cpp": /^#include\s+/, ".h": /^#include\s+/,
+    ".ts": /^import\s+/,
+    ".tsx": /^import\s+/,
+    ".js": /^import\s+/,
+    ".jsx": /^import\s+/,
+    ".py": /^(import|from)\s+/,
+    ".rb": /^require\s+/,
+    ".php": /^(require|include|use)\s+/,
+    ".go": /^import\s+/,
+    ".rs": /^use\s+/,
+    ".java": /^import\s+/,
+    ".kt": /^import\s+/,
+    ".swift": /^import\s+/,
+    ".c": /^#include\s+/,
+    ".cpp": /^#include\s+/,
+    ".h": /^#include\s+/,
   };
   return map[ext] || null;
+}
+
+export async function diffFiles(filePath1: string, filePath2: string, contextLines = 3): Promise<string> {
+  const full1 = path.resolve(filePath1);
+  const full2 = path.resolve(filePath2);
+
+  let content1: string;
+  let content2: string;
+
+  try {
+    content1 = await fs.readFile(full1, "utf-8");
+  } catch (err) {
+    return `Error reading ${full1}: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  try {
+    content2 = await fs.readFile(full2, "utf-8");
+  } catch (err) {
+    return `Error reading ${full2}: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  const result = diffText(content1, content2, contextLines);
+  return `# Diff: ${path.basename(full1)} → ${path.basename(full2)}\n\n${result}`;
 }

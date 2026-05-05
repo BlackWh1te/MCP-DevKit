@@ -91,14 +91,11 @@ const DETECTORS: Record<string, (files: string[]) => string[]> = {
   Java: (files) => {
     const out: string[] = [];
     if (files.includes("pom.xml")) out.push("Java", "Maven");
-    if (files.includes("build.gradle") || files.includes("build.gradle.kts"))
-      out.push("Java", "Gradle");
+    if (files.includes("build.gradle") || files.includes("build.gradle.kts")) out.push("Java", "Gradle");
     return out;
   },
   DotNet: (files) => {
-    return files.some((f) => f.endsWith(".csproj") || f.endsWith(".sln"))
-      ? [".NET"]
-      : [];
+    return files.some((f) => f.endsWith(".csproj") || f.endsWith(".sln")) ? [".NET"] : [];
   },
   Ruby: (files) => {
     return files.includes("Gemfile") ? ["Ruby", "Bundler"] : [];
@@ -107,9 +104,7 @@ const DETECTORS: Record<string, (files: string[]) => string[]> = {
     return files.includes("composer.json") ? ["PHP", "Composer"] : [];
   },
   Docker: (files) => {
-    return files.some((f) => f.startsWith("Dockerfile") || f.includes("docker-compose"))
-      ? ["Docker"]
-      : [];
+    return files.some((f) => f.startsWith("Dockerfile") || f.includes("docker-compose")) ? ["Docker"] : [];
   },
   CI: (files) => {
     const out: string[] = [];
@@ -164,10 +159,7 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     return [];
   },
   Svelte: (files) => (files.includes("svelte.config.js") ? ["Svelte"] : []),
-  SvelteKit: (files) =>
-    files.includes("svelte.config.js") && files.includes("src/routes")
-      ? ["SvelteKit"]
-      : [],
+  SvelteKit: (files) => (files.includes("svelte.config.js") && files.includes("src/routes") ? ["SvelteKit"] : []),
   Remix: (_f, contentMap) => {
     const pkg = contentMap.get("package.json");
     if (pkg && pkg.includes("remix")) return ["Remix"];
@@ -182,7 +174,8 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
   Vite: (files, contentMap) => {
     const pkg = contentMap.get("package.json");
     if (pkg && pkg.includes("vite")) return ["Vite"];
-    if (files.includes("vite.config.ts") || files.includes("vite.config.js") || files.includes("vite.config.mjs")) return ["Vite"];
+    if (files.includes("vite.config.ts") || files.includes("vite.config.js") || files.includes("vite.config.mjs"))
+      return ["Vite"];
     return [];
   },
   Electron: (_f, contentMap) => {
@@ -212,10 +205,7 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     if (pkg && pkg.includes("tailwindcss")) return ["Tailwind CSS"];
     return [];
   },
-  Tauri: (files) =>
-    files.includes("tauri.conf.json") || files.includes("src-tauri/Cargo.toml")
-      ? ["Tauri"]
-      : [],
+  Tauri: (files) => (files.includes("tauri.conf.json") || files.includes("src-tauri/Cargo.toml") ? ["Tauri"] : []),
   Capacitor: (_f, contentMap) => {
     const pkg = contentMap.get("package.json");
     if (pkg && pkg.includes("@capacitor")) return ["Capacitor"];
@@ -226,22 +216,13 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     if (pkg && pkg.includes("@ionic")) return ["Ionic"];
     return [];
   },
-  Flutter: (files) =>
-    files.includes("pubspec.yaml") && files.includes("lib/main.dart")
-      ? ["Flutter"]
-      : [],
-  Dart: (files) =>
-    files.includes("pubspec.yaml") ? ["Dart"] : [],
-  Kotlin: (files) =>
-    files.some((f) => f.endsWith(".kt") || f.endsWith(".kts")) ? ["Kotlin"] : [],
-  Swift: (files) =>
-    files.some((f) => f.endsWith(".swift")) ? ["Swift"] : [],
-  Unity: (files) =>
-    files.some((f) => f.includes("Unity") && f.endsWith(".cs")) ? ["Unity"] : [],
-  Unreal: (files) =>
-    files.some((f) => f.endsWith(".uproject")) ? ["Unreal Engine"] : [],
-  Godot: (files) =>
-    files.some((f) => f.endsWith(".godot") || f.endsWith(".tscn")) ? ["Godot"] : [],
+  Flutter: (files) => (files.includes("pubspec.yaml") && files.includes("lib/main.dart") ? ["Flutter"] : []),
+  Dart: (files) => (files.includes("pubspec.yaml") ? ["Dart"] : []),
+  Kotlin: (files) => (files.some((f) => f.endsWith(".kt") || f.endsWith(".kts")) ? ["Kotlin"] : []),
+  Swift: (files) => (files.some((f) => f.endsWith(".swift")) ? ["Swift"] : []),
+  Unity: (files) => (files.some((f) => f.includes("Unity") && f.endsWith(".cs")) ? ["Unity"] : []),
+  Unreal: (files) => (files.some((f) => f.endsWith(".uproject")) ? ["Unreal Engine"] : []),
+  Godot: (files) => (files.some((f) => f.endsWith(".godot") || f.endsWith(".tscn")) ? ["Godot"] : []),
   Bevy: (_f, contentMap) => {
     const cargo = contentMap.get("Cargo.toml");
     if (cargo && cargo.includes("bevy")) return ["Bevy"];
@@ -302,8 +283,7 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     if (pkg && pkg.includes("pinia")) return ["Pinia"];
     return [];
   },
-  Prisma: (files) =>
-    files.includes("prisma/schema.prisma") ? ["Prisma"] : [],
+  Prisma: (files) => (files.includes("prisma/schema.prisma") ? ["Prisma"] : []),
   Drizzle: (_f, contentMap) => {
     const pkg = contentMap.get("package.json");
     if (pkg && pkg.includes("drizzle")) return ["Drizzle ORM"];
@@ -364,23 +344,50 @@ const FRAMEWORK_DETECTOR: Record<string, (files: string[], contentMap: Map<strin
     if (pkg && (pkg.includes("vercel") || files.includes("vercel.json"))) return ["Vercel"];
     return [];
   },
-  Netlify: (files) =>
-    files.includes("netlify.toml") ? ["Netlify"] : [],
+  Netlify: (files) => (files.includes("netlify.toml") ? ["Netlify"] : []),
   Cloudflare: (files, contentMap) => {
     const pkg = contentMap.get("package.json");
     if (pkg && (pkg.includes("wrangler") || files.includes("wrangler.toml"))) return ["Cloudflare Workers"];
     return [];
   },
-  Terraform: (files) =>
-    files.some((f) => f.endsWith(".tf")) ? ["Terraform"] : [],
+  Terraform: (files) => (files.some((f) => f.endsWith(".tf")) ? ["Terraform"] : []),
   Kubernetes: (files) =>
     files.some((f) => f.endsWith(".yaml") && f.includes("k8s")) || files.includes("deployment.yaml")
       ? ["Kubernetes"]
       : [],
-  Ansible: (files) =>
-    files.some((f) => f.includes("playbook") && f.endsWith(".yml")) ? ["Ansible"] : [],
-  Pulumi: (files) =>
-    files.includes("Pulumi.yaml") ? ["Pulumi"] : [],
+  Ansible: (files) => (files.some((f) => f.includes("playbook") && f.endsWith(".yml")) ? ["Ansible"] : []),
+  Pulumi: (files) => (files.includes("Pulumi.yaml") ? ["Pulumi"] : []),
+  Playwright: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("playwright")) return ["Playwright"];
+    return [];
+  },
+  Zod: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("zod")) return ["Zod"];
+    return [];
+  },
+  Biome: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("biome")) return ["Biome"];
+    return [];
+  },
+  Turborepo: (files, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (files.includes("turbo.json") || (pkg && pkg.includes("turbo"))) return ["Turborepo"];
+    return [];
+  },
+  Nx: (files, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (files.includes("nx.json") || (pkg && pkg.includes("nx"))) return ["Nx"];
+    return [];
+  },
+  TanStackQuery: (_f, contentMap) => {
+    const pkg = contentMap.get("package.json");
+    if (pkg && pkg.includes("@tanstack")) return ["TanStack Query"];
+    return [];
+  },
+  shadcn: (files) => (files.includes("components.json") ? ["shadcn/ui"] : []),
 };
 
 async function canRead(p: string): Promise<boolean> {
@@ -476,7 +483,11 @@ async function analyzeCodeQuality(files: string[], root: string): Promise<CodeQu
 }
 
 // Security vulnerability detection
-async function detectSecurityIssues(files: string[], root: string, contentMap: Map<string, string>): Promise<SecurityIssue[]> {
+async function detectSecurityIssues(
+  files: string[],
+  root: string,
+  contentMap: Map<string, string>,
+): Promise<SecurityIssue[]> {
   const issues: SecurityIssue[] = [];
 
   // Check package.json for vulnerable dependencies
@@ -488,10 +499,10 @@ async function detectSecurityIssues(files: string[], root: string, contentMap: M
 
       // Known vulnerable packages (simplified check)
       const knownVulns: Record<string, string> = {
-        "lodash": "<4.17.21",
-        "axios": "<0.21.1",
-        "moment": "<2.29.4",
-        "express": "<4.17.2",
+        lodash: "<4.17.21",
+        axios: "<0.21.1",
+        moment: "<2.29.4",
+        express: "<4.17.2",
       };
 
       for (const [dep, version] of Object.entries(deps)) {
@@ -564,7 +575,11 @@ async function detectSecurityIssues(files: string[], root: string, contentMap: M
 }
 
 // Pattern detection
-async function detectPatterns(files: string[], root: string, contentMap: Map<string, string>): Promise<PatternDetection> {
+async function detectPatterns(
+  files: string[],
+  root: string,
+  contentMap: Map<string, string>,
+): Promise<PatternDetection> {
   const designPatterns: string[] = [];
   const antiPatterns: string[] = [];
   const architecturePatterns: string[] = [];
@@ -678,7 +693,17 @@ export async function scanProject(projectPath: string, maxDepth = 5): Promise<Sc
     if (!canRead(dir)) return;
     const entries = await readDirSafe(dir);
     for (const name of entries) {
-      if (name === ".git" || name === "node_modules" || name === "vendor" || name === "__pycache__" || name === ".next" || name === "dist" || name === "build" || name === "target" || name === ".cargo") {
+      if (
+        name === ".git" ||
+        name === "node_modules" ||
+        name === "vendor" ||
+        name === "__pycache__" ||
+        name === ".next" ||
+        name === "dist" ||
+        name === "build" ||
+        name === "target" ||
+        name === ".cargo"
+      ) {
         continue;
       }
       const full = path.join(dir, name);
@@ -693,7 +718,13 @@ export async function scanProject(projectPath: string, maxDepth = 5): Promise<Sc
           structure.push({ name, path: full, type: "file", size: stat.size });
           allFiles.push(full);
           if (depth === 0) topLevelFiles.push(name);
-          if (name === "package.json" || name === "requirements.txt" || name === "Cargo.toml" || name === "go.mod" || name === "pyproject.toml") {
+          if (
+            name === "package.json" ||
+            name === "requirements.txt" ||
+            name === "Cargo.toml" ||
+            name === "go.mod" ||
+            name === "pyproject.toml"
+          ) {
             contentMap.set(name, await readFileSafe(full));
           }
         }
@@ -715,7 +746,22 @@ export async function scanProject(projectPath: string, maxDepth = 5): Promise<Sc
     const detected = detector(topLevelFiles);
     for (const d of detected) {
       if (!languages.includes(d) && !frameworks.includes(d) && !buildTools.includes(d)) {
-        if (["npm", "Yarn", "pnpm", "Bun", "Poetry", "Pipenv", "Cargo", "Go Modules", "Maven", "Gradle", "Bundler", "Composer"].includes(d)) {
+        if (
+          [
+            "npm",
+            "Yarn",
+            "pnpm",
+            "Bun",
+            "Poetry",
+            "Pipenv",
+            "Cargo",
+            "Go Modules",
+            "Maven",
+            "Gradle",
+            "Bundler",
+            "Composer",
+          ].includes(d)
+        ) {
           if (!buildTools.includes(d)) buildTools.push(d);
         } else {
           if (!languages.includes(d)) languages.push(d);
@@ -755,7 +801,8 @@ export async function scanProject(projectPath: string, maxDepth = 5): Promise<Sc
   if (topLevelFiles.some((f) => f.includes("cypress"))) testFrameworks.push("Cypress");
   if (topLevelFiles.some((f) => f.includes("playwright"))) testFrameworks.push("Playwright");
   if (topLevelFiles.includes("pytest.ini") || topLevelFiles.includes("setup.cfg")) testFrameworks.push("pytest");
-  if (topLevelFiles.includes("Cargo.toml") && contentMap.get("Cargo.toml")?.includes("[[test]]")) testFrameworks.push("Cargo test");
+  if (topLevelFiles.includes("Cargo.toml") && contentMap.get("Cargo.toml")?.includes("[[test]]"))
+    testFrameworks.push("Cargo test");
 
   // Advanced analysis
   const [codeQuality, securityIssues, patterns, dependencies] = await Promise.all([
@@ -805,9 +852,11 @@ export async function getProjectSummary(projectPath: string): Promise<string> {
   lines.push(``);
   if (sec.length > 0) {
     lines.push(`## Security Issues (${sec.length})`);
-    const critical = sec.filter(s => s.severity === "critical").length;
-    const high = sec.filter(s => s.severity === "high").length;
-    lines.push(`- Critical: ${critical}, High: ${high}, Medium: ${sec.filter(s => s.severity === "medium").length}, Low: ${sec.filter(s => s.severity === "low").length}`);
+    const critical = sec.filter((s) => s.severity === "critical").length;
+    const high = sec.filter((s) => s.severity === "high").length;
+    lines.push(
+      `- Critical: ${critical}, High: ${high}, Medium: ${sec.filter((s) => s.severity === "medium").length}, Low: ${sec.filter((s) => s.severity === "low").length}`,
+    );
     for (const issue of sec.slice(0, 5)) {
       lines.push(`  - [${issue.severity.toUpperCase()}] ${issue.type}: ${issue.description}`);
     }
@@ -913,7 +962,10 @@ export async function explainArchitecture(projectPath: string): Promise<string> 
   lines.push(``);
   lines.push(`## Key Files`);
   const keyFiles = scan.topLevelFiles
-    .filter((f) => f.endsWith(".json") || f.endsWith(".toml") || f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md"))
+    .filter(
+      (f) =>
+        f.endsWith(".json") || f.endsWith(".toml") || f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md"),
+    )
     .slice(0, 10);
   for (const f of keyFiles) lines.push(`- ${f}`);
 

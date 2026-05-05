@@ -146,7 +146,7 @@ export async function fetchStructured(url: string, options: Omit<FetchOptions, "
     }
 
     const contentType = response.headers.get("content-type") || "";
-    let body = await response.text();
+    const body = await response.text();
     const result: any = {
       url,
       status: response.status,

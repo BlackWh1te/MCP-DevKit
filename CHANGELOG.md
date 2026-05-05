@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-05-05
+
+### Added
+- ESLint 9 flat config (`eslint.config.js`) with TypeScript support via `typescript-eslint`.
+- Prettier config (`.prettierrc`) for consistent formatting.
+- Pre-commit hooks via `lefthook.yml` — runs lint, format, typecheck, and tests on every commit.
+- New npm scripts: `lint`, `lint:fix`, `format`, `format:check`, `typecheck`, `ci`.
+- Tests for `package-runner.ts` (9 tests covering cache, scripts, dependencies, package info).
+- Tests for `cli.ts` (8 tests covering help, scan, summary, search, read, error cases).
+
+### Fixed
+- Fixed ESLint errors in `dev-utils.ts`, `git-tools.ts`, and `web.ts` (prefer-const, no-useless-escape).
+
 ## [1.0.2] - 2025-05-05
 
 ### Added

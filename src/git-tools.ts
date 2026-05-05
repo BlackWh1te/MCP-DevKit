@@ -413,7 +413,7 @@ export async function analyzeBranchHealth(repoPath?: string): Promise<string> {
   const lines = result.stdout.split("\n").filter(Boolean);
 
   for (const line of lines) {
-    const match = line.match(/^[\* ]\s+(\S+)\s+([a-f0-9]+)\s+\[([^\]]+)\]/);
+    const match = line.match(/^[* ]\s+(\S+)\s+([a-f0-9]+)\s+\[([^\]]+)\]/);
     if (match) {
       const [, name, , upstream] = match;
       const aheadMatch = upstream.match(/ahead\s+(\d+)/);

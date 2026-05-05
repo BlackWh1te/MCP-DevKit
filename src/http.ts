@@ -50,6 +50,8 @@ const domainStats = new Map<string, DomainStats>();
 const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_COOLDOWN_MS = 30000;
 const MAX_METRICS = 500;
+const MAX_CACHE_ENTRIES = 100;
+const MAX_DOMAIN_STATS = 100;
 
 function getCacheKey(url: string, method: string, body?: string): string {
   return `${method}:${url}:${body || ""}`;
@@ -65,6 +67,9 @@ function getCachedResponse(key: string, ttl: number): string | null {
     return null;
   }
 
+  // LRU: move to end (most recently used)
+  responseCache.delete(key);
+  responseCache.set(key, entry);
   return entry.response;
 }
 
@@ -74,8 +79,8 @@ function setCachedResponse(key: string, response: string): void {
     timestamp: Date.now(),
   });
 
-  // Limit cache size
-  if (responseCache.size > 100) {
+  // LRU eviction: delete oldest (first) entry when over limit
+  while (responseCache.size > MAX_CACHE_ENTRIES) {
     const oldestKey = Array.from(responseCache.keys())[0];
     responseCache.delete(oldestKey);
   }
@@ -91,6 +96,11 @@ function getDomain(url: string): string {
 
 function getOrCreateDomainStats(domain: string): DomainStats {
   if (!domainStats.has(domain)) {
+    // Evict oldest domain if at limit
+    if (domainStats.size >= MAX_DOMAIN_STATS) {
+      const oldestKey = Array.from(domainStats.keys())[0];
+      domainStats.delete(oldestKey);
+    }
     domainStats.set(domain, {
       domain,
       totalRequests: 0,
@@ -133,9 +143,9 @@ function recordMetric(metric: RequestMetric) {
   }
 
   // Recalculate latencies for this domain
-  const domainMetrics = requestMetrics.filter(m => getDomain(m.url) === domain && m.success);
+  const domainMetrics = requestMetrics.filter((m) => getDomain(m.url) === domain && m.success);
   if (domainMetrics.length > 0) {
-    const latencies = domainMetrics.map(m => m.latencyMs).sort((a, b) => a - b);
+    const latencies = domainMetrics.map((m) => m.latencyMs).sort((a, b) => a - b);
     stats.avgLatencyMs = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
     const p95Index = Math.floor(latencies.length * 0.95);
     stats.p95LatencyMs = latencies[Math.min(p95Index, latencies.length - 1)];
@@ -154,7 +164,13 @@ function isCircuitOpen(domain: string): boolean {
   return true;
 }
 
-function validateResponse(status: number, contentType: string, body: string, expectJson?: boolean, validateStatus?: number): { valid: boolean; warnings: string[] } {
+function validateResponse(
+  status: number,
+  contentType: string,
+  body: string,
+  expectJson?: boolean,
+  validateStatus?: number,
+): { valid: boolean; warnings: string[] } {
   const warnings: string[] = [];
 
   if (validateStatus && status !== validateStatus) {
@@ -181,7 +197,7 @@ function validateResponse(status: number, contentType: string, body: string, exp
 }
 
 async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function httpRequest(input: HttpRequestInput): Promise<string> {
@@ -205,11 +221,15 @@ export async function httpRequest(input: HttpRequestInput): Promise<string> {
   if (isCircuitOpen(domain)) {
     const stats = domainStats.get(domain)!;
     const secondsRemaining = Math.ceil((stats.circuitOpenUntil - Date.now()) / 1000);
-    return JSON.stringify({
-      error: `Circuit breaker OPEN for ${domain}. Try again in ${secondsRemaining}s.`,
-      circuitBreaker: true,
-      domain,
-    }, null, 2);
+    return JSON.stringify(
+      {
+        error: `Circuit breaker OPEN for ${domain}. Try again in ${secondsRemaining}s.`,
+        circuitBreaker: true,
+        domain,
+      },
+      null,
+      2,
+    );
   }
 
   const cacheKey = getCacheKey(url, method.toUpperCase(), body);
@@ -359,10 +379,10 @@ export function getHttpPerformance(): string {
   }
 
   const total = requestMetrics.length;
-  const successful = requestMetrics.filter(m => m.success).length;
+  const successful = requestMetrics.filter((m) => m.success).length;
   const failed = total - successful;
   const avgLatency = Math.round(requestMetrics.reduce((a, m) => a + m.latencyMs, 0) / total);
-  const latencies = requestMetrics.map(m => m.latencyMs).sort((a, b) => a - b);
+  const latencies = requestMetrics.map((m) => m.latencyMs).sort((a, b) => a - b);
   const p95 = latencies[Math.floor(latencies.length * 0.95)];
   const p99 = latencies[Math.floor(latencies.length * 0.99)];
 

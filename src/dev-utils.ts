@@ -40,13 +40,18 @@ export function diffText(oldText: string, newText: string, contextLines = 3): st
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
       temp.unshift({ type: "context", line: oldLines[i - 1], oldNumber: oldNum, newNumber: newNum });
-      i--; j--; oldNum--; newNum--;
+      i--;
+      j--;
+      oldNum--;
+      newNum--;
     } else if (j > 0 && (i === 0 || matrix[i][j - 1] >= matrix[i - 1][j])) {
       temp.unshift({ type: "added", line: newLines[j - 1], newNumber: newNum });
-      j--; newNum--;
+      j--;
+      newNum--;
     } else {
       temp.unshift({ type: "removed", line: oldLines[i - 1], oldNumber: oldNum });
-      i--; oldNum--;
+      i--;
+      oldNum--;
     }
   }
 
@@ -85,7 +90,10 @@ export function diffText(oldText: string, newText: string, contextLines = 3): st
     return "No differences found.";
   }
 
-  const lines: string[] = [`Diff (${oldLines.length} → ${newLines.length} lines, ${hunks.length} hunk${hunks.length > 1 ? "s" : ""}):`, ""];
+  const lines: string[] = [
+    `Diff (${oldLines.length} → ${newLines.length} lines, ${hunks.length} hunk${hunks.length > 1 ? "s" : ""}):`,
+    "",
+  ];
   for (const hunk of hunks) {
     lines.push("@@ --- @@");
     for (const l of hunk) {
@@ -123,7 +131,7 @@ export function regexTest(pattern: string, text: string, flags = "g"): string {
         matches: matches.slice(0, 50),
       },
       null,
-      2
+      2,
     );
   } catch (err: any) {
     return `Invalid regex: ${err.message}`;
@@ -132,7 +140,10 @@ export function regexTest(pattern: string, text: string, flags = "g"): string {
 
 // ─── Password Generator ──────────────
 
-export function generatePassword(length = 16, options?: { uppercase?: boolean; lowercase?: boolean; numbers?: boolean; symbols?: boolean }): string {
+export function generatePassword(
+  length = 16,
+  options?: { uppercase?: boolean; lowercase?: boolean; numbers?: boolean; symbols?: boolean },
+): string {
   const opts = { uppercase: true, lowercase: true, numbers: true, symbols: true, ...options };
   const chars: string[] = [];
   if (opts.lowercase) chars.push("abcdefghijklmnopqrstuvwxyz");
@@ -149,12 +160,16 @@ export function generatePassword(length = 16, options?: { uppercase?: boolean; l
     password += allChars[bytes[i] % allChars.length];
   }
 
-  return JSON.stringify({
-    password,
-    length,
-    options: opts,
-    entropy: Math.round(Math.log2(Math.pow(allChars.length, length))),
-  }, null, 2);
+  return JSON.stringify(
+    {
+      password,
+      length,
+      options: opts,
+      entropy: Math.round(Math.log2(Math.pow(allChars.length, length))),
+    },
+    null,
+    2,
+  );
 }
 
 // ─── JWT Decode ──────────────────────
@@ -190,7 +205,7 @@ export function jwtDecode(token: string): string {
         note: "Signature NOT verified. This is for debugging only.",
       },
       null,
-      2
+      2,
     );
   } catch (err: any) {
     return `Error decoding JWT: ${err.message}`;
@@ -222,8 +237,8 @@ export function analyzeText(text: string): string {
       languageHint: hasCode ? "possibly code" : "possibly prose",
     },
     null,
-    2
-    );
+    2,
+  );
 }
 
 // ─── Color Convert ───────────────────
@@ -240,18 +255,28 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 }
 
 function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255; g /= 255; b /= 255;
+  r /= 255;
+  g /= 255;
+  b /= 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0, s = 0; const l = (max + min) / 2;
+  let h = 0,
+    s = 0;
+  const l = (max + min) / 2;
 
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
     }
   }
 
@@ -282,7 +307,9 @@ export function convertColor(input: string): string {
   // RGB input
   const rgbMatch = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(input);
   if (rgbMatch) {
-    const r = parseInt(rgbMatch[1]), g = parseInt(rgbMatch[2]), b = parseInt(rgbMatch[3]);
+    const r = parseInt(rgbMatch[1]),
+      g = parseInt(rgbMatch[2]),
+      b = parseInt(rgbMatch[3]);
     const hsl = rgbToHsl(r, g, b);
     result = {
       hex: rgbToHex(r, g, b),
@@ -308,20 +335,223 @@ export function convertColor(input: string): string {
   return JSON.stringify(result, null, 2);
 }
 
-// ─── Math Evaluator ──────────────────
+// ─── Safe Math Evaluator ─────────────
+
+function tokenizeMath(expr: string): (string | number)[] {
+  const tokens: (string | number)[] = [];
+  let i = 0;
+  while (i < expr.length) {
+    const ch = expr[i];
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+    if (/\d/.test(ch) || (ch === "." && /\d/.test(expr[i + 1] || ""))) {
+      let num = "";
+      while (i < expr.length && (/\d/.test(expr[i]) || expr[i] === ".")) {
+        num += expr[i++];
+      }
+      tokens.push(parseFloat(num));
+      continue;
+    }
+    if (ch === "*" && expr[i + 1] === "*") {
+      tokens.push("**");
+      i += 2;
+      continue;
+    }
+    if (ch === "<" && expr[i + 1] === "=") {
+      tokens.push("<=");
+      i += 2;
+      continue;
+    }
+    if (ch === ">" && expr[i + 1] === "=") {
+      tokens.push(">=");
+      i += 2;
+      continue;
+    }
+    if (ch === "=" && expr[i + 1] === "=") {
+      tokens.push("==");
+      i += 2;
+      continue;
+    }
+    if (ch === "!" && expr[i + 1] === "=") {
+      tokens.push("!=");
+      i += 2;
+      continue;
+    }
+    if (["+", "-", "*", "/", "%", "^", "&", "|", "<", ">", "!", "(", ")"].includes(ch)) {
+      tokens.push(ch);
+      i++;
+      continue;
+    }
+    throw new Error(`Unexpected character: ${ch}`);
+  }
+  return tokens;
+}
+
+function evalMath(tokens: (string | number)[]): number {
+  let pos = 0;
+  function peek() {
+    return tokens[pos];
+  }
+  function consume() {
+    return tokens[pos++];
+  }
+
+  function parsePrimary(): number {
+    const t = peek();
+    if (t === "(") {
+      consume();
+      const v = parseOr();
+      if (consume() !== ")") throw new Error("Missing )");
+      return v;
+    }
+    if (typeof t === "number") {
+      consume();
+      return t;
+    }
+    throw new Error(`Unexpected token: ${t}`);
+  }
+
+  function parseUnary(): number {
+    const t = peek();
+    if (t === "-") {
+      consume();
+      return -parseUnary();
+    }
+    if (t === "+") {
+      consume();
+      return parseUnary();
+    }
+    if (t === "!") {
+      consume();
+      return parseUnary() ? 0 : 1;
+    }
+    return parsePrimary();
+  }
+
+  function parsePower(): number {
+    let left = parseUnary();
+    while (peek() === "**" || peek() === "^") {
+      consume();
+      left = Math.pow(left, parseUnary());
+    }
+    return left;
+  }
+
+  function parseMul(): number {
+    let left = parsePower();
+    while (true) {
+      const op = peek();
+      if (op === "*") {
+        consume();
+        left *= parsePower();
+      } else if (op === "/") {
+        consume();
+        const rhs = parsePower();
+        if (rhs === 0) throw new Error("Division by zero");
+        left /= rhs;
+      } else if (op === "%") {
+        consume();
+        left %= parsePower();
+      } else break;
+    }
+    return left;
+  }
+
+  function parseAdd(): number {
+    let left = parseMul();
+    while (true) {
+      const op = peek();
+      if (op === "+") {
+        consume();
+        left += parseMul();
+      } else if (op === "-") {
+        consume();
+        left -= parseMul();
+      } else break;
+    }
+    return left;
+  }
+
+  function parseComp(): number {
+    let left = parseAdd();
+    while (true) {
+      const op = peek();
+      if (op === "<") {
+        consume();
+        left = left < parseAdd() ? 1 : 0;
+      } else if (op === ">") {
+        consume();
+        left = left > parseAdd() ? 1 : 0;
+      } else if (op === "<=") {
+        consume();
+        left = left <= parseAdd() ? 1 : 0;
+      } else if (op === ">=") {
+        consume();
+        left = left >= parseAdd() ? 1 : 0;
+      } else break;
+    }
+    return left;
+  }
+
+  function parseEq(): number {
+    let left = parseComp();
+    while (true) {
+      const op = peek();
+      if (op === "==") {
+        consume();
+        left = left === parseComp() ? 1 : 0;
+      } else if (op === "!=") {
+        consume();
+        left = left !== parseComp() ? 1 : 0;
+      } else break;
+    }
+    return left;
+  }
+
+  function parseAnd(): number {
+    let left = parseEq();
+    while (peek() === "&") {
+      consume();
+      left = left && parseEq() ? 1 : 0;
+    }
+    return left;
+  }
+
+  function parseOr(): number {
+    let left = parseAnd();
+    while (peek() === "|") {
+      consume();
+      left = left || parseAnd() ? 1 : 0;
+    }
+    return left;
+  }
+
+  const result = parseOr();
+  if (pos !== tokens.length) throw new Error("Unexpected tokens after expression");
+  return result;
+}
 
 export function evaluateMath(expression: string): string {
   try {
     // Only allow safe math characters
     const sanitized = expression.replace(/[^0-9+\-*/().\s%^&|<>!=]/g, "");
     if (sanitized !== expression.trim()) {
-      return "Error: Expression contains invalid characters. Only numbers, operators, and parentheses are allowed.";
+      return JSON.stringify(
+        { error: "Expression contains invalid characters. Only numbers, operators, and parentheses are allowed." },
+        null,
+        2,
+      );
     }
 
-    // Use Function instead of eval for slightly better isolation
-    const result = new Function(`return (${sanitized})`)();
+    const tokens = tokenizeMath(sanitized);
+    if (tokens.length === 0) {
+      return JSON.stringify({ error: "Empty expression" }, null, 2);
+    }
+    const result = evalMath(tokens);
     return JSON.stringify({ expression: sanitized, result, type: typeof result }, null, 2);
   } catch (err: any) {
-    return `Error evaluating expression: ${err.message}`;
+    return JSON.stringify({ error: `Error evaluating expression: ${err.message}` }, null, 2);
   }
 }

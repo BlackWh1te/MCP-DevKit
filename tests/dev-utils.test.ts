@@ -53,7 +53,8 @@ describe("Dev Utils", () => {
 
   describe("jwtDecode", () => {
     it("should decode JWT token", () => {
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      const token =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
       const result = jwtDecode(token);
       const parsed = JSON.parse(result);
       expect(parsed).toHaveProperty("header");
@@ -115,7 +116,8 @@ describe("Dev Utils", () => {
 
     it("should handle invalid expression", () => {
       const result = evaluateMath("invalid");
-      expect(result).toContain("Error");
+      const parsed = JSON.parse(result);
+      expect(parsed.error).toBeTruthy();
     });
   });
 });

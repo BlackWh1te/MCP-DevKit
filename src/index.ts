@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { scanProject, getProjectSummary, explainArchitecture } from "./scanner.js";
-import { remember, recall, listMemories, deduplicateMemories, summarizeMemory, findRelatedMemories, exportMemories, importMemories } from "./memory.js";
+import { remember, recall, listMemories, deduplicateMemories, summarizeMemory, findRelatedMemories, exportMemories, importMemories, getMemoryHealth, pruneMemories, consolidateMemories, forgetMemory, updateMemoryImportance, searchBySentiment } from "./memory.js";
 import { runCommand } from "./terminal.js";
 import {
   gitStatus, gitLog, gitDiff,
@@ -25,10 +25,14 @@ import {
   scoreCommitQuality,
   detectConflicts,
   getGitConfig,
+  analyzeCommitImpact,
+  getAuthorStats,
+  analyzeBranchEvolution,
+  getRepoInsights,
 } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
 import { readFile, writeFile, editFile, deleteFile, moveFile, copyFile, createDirectory, removeDirectory, listDirectory } from "./files.js";
-import { httpRequest, clearHttpCache, getHttpCacheStats } from "./http.js";
+import { httpRequest, clearHttpCache, getHttpCacheStats, getHttpPerformance, resetCircuitBreaker, clearHttpMetrics } from "./http.js";
 import { listProcesses, killProcess, getProcessTree, monitorProcess, filterProcesses, clearProcessHistory, getProcessHistory } from "./process.js";
 import { getSystemInfo, checkPort, getEnvFile, getDiskUsage, getNetworkInfo, getEnvVarAnalysis } from "./system.js";
 import { getCodeStats } from "./stats.js";
@@ -160,13 +164,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_memories",
-        description: "List all stored memory keys and tags.",
+        description: "List all stored memory keys, tags, categories, sentiment, and freshness. Filter by tag or category.",
         inputSchema: {
           type: "object",
           properties: {
             tag: {
               type: "string",
               description: "Optional tag filter",
+            },
+            category: {
+              type: "string",
+              description: "Optional category filter (e.g., api, frontend, security, debugging)",
             },
           },
         },
@@ -222,7 +230,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "import_memories",
-        description: "Import memories from a backup JSON file.",
+        description: "Import memories from a backup JSON file. Merges duplicates instead of skipping.",
         inputSchema: {
           type: "object",
           properties: {
@@ -232,6 +240,81 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ["backupPath"],
+        },
+      },
+      {
+        name: "get_memory_health",
+        description: "Get a comprehensive health report of the memory system: total count, active vs stale, sentiment distribution, top categories, growth, and unused memories.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "prune_memories",
+        description: "Remove low-value memories based on importance, access count, and decay. Keeps the most valuable memories. Optional keepCount to override default 80% retention.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            keepCount: {
+              type: "number",
+              description: "Optional number of memories to keep",
+            },
+          },
+        },
+      },
+      {
+        name: "consolidate_memories",
+        description: "Auto-merge highly similar (>90%) duplicate memories into single entries. Updates tags and importance.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "forget_memory",
+        description: "Permanently delete a memory by key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            key: {
+              type: "string",
+              description: "Memory key to delete",
+            },
+          },
+          required: ["key"],
+        },
+      },
+      {
+        name: "update_memory_importance",
+        description: "Manually set the importance score (0-10) of a memory.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            key: {
+              type: "string",
+              description: "Memory key",
+            },
+            importance: {
+              type: "number",
+              description: "Importance score 0-10",
+            },
+          },
+          required: ["key", "importance"],
+        },
+      },
+      {
+        name: "search_by_sentiment",
+        description: "Search memories filtered by sentiment: positive, neutral, or negative.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sentiment: {
+              type: "string",
+              description: "Sentiment to filter by: positive, neutral, negative",
+            },
+          },
+          required: ["sentiment"],
         },
       },
       {
@@ -313,7 +396,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "search_code",
         description:
-          "Search code across the project using regex or literal string. Respects .gitignore. Returns context and relevance scores.",
+          "AI-powered code search. Detects match types (definition, usage, import, comment, string), extracts symbol names, and scores relevance by context. Respects .gitignore.",
         inputSchema: {
           type: "object",
           properties: {
@@ -466,7 +549,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "http_request",
-        description: "Make HTTP GET/POST/PUT/DELETE requests with optional headers, body, retry logic with exponential backoff, and response caching. Returns status, headers, body, and attempt count.",
+        description: "Make HTTP GET/POST/PUT/DELETE requests with circuit breaker, retry logic with exponential backoff, response caching, and performance tracking. Returns status, headers, body, latency, validation warnings, and attempt count.",
         inputSchema: {
           type: "object",
           properties: {
@@ -512,6 +595,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "Cache time-to-live in ms (default: 60000)",
               default: 60000,
             },
+            expectJson: {
+              type: "boolean",
+              description: "Validate response is JSON (default: false)",
+              default: false,
+            },
+            validateStatus: {
+              type: "number",
+              description: "Expected HTTP status code (optional validation)",
+            },
           },
           required: ["url"],
         },
@@ -527,6 +619,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "get_http_cache_stats",
         description: "Get statistics about the HTTP response cache: size and cached entries.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "get_http_performance",
+        description: "Get HTTP performance metrics: total requests, success rate, avg/P95/P99 latency, and per-domain stats including circuit breaker status.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "reset_circuit_breaker",
+        description: "Reset the circuit breaker for a specific domain or all domains. Allows retrying requests to previously failed domains.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            domain: {
+              type: "string",
+              description: "Optional domain to reset (default: all domains)",
+            },
+          },
+        },
+      },
+      {
+        name: "clear_http_metrics",
+        description: "Clear all HTTP performance metrics and circuit breaker states. Resets tracking to initial state.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -704,7 +825,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_code_stats",
-        description: "Analyze code statistics: lines of code, language breakdown, TODO/FIXME counts, file sizes. Cross-platform.",
+        description: "AI-enhanced code analysis: lines of code, language breakdown, TODO/FIXME counts, file sizes, complexity scoring, import analysis, comment coverage, hotspot detection, and architecture metrics (modularity, cohesion, coupling). Cross-platform.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1156,6 +1277,72 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "analyze_commit_impact",
+        description: "Analyze commit impact: blast radius (insertions + deletions), files changed, and affected files. Helps identify high-impact commits.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+            limit: {
+              type: "number",
+              description: "Number of commits to analyze (default: 10)",
+              default: 10,
+            },
+          },
+        },
+      },
+      {
+        name: "get_author_stats",
+        description: "Get author contribution statistics: commits, lines added/deleted, net contribution, first/last commit, and average commit size per author.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+            limit: {
+              type: "number",
+              description: "Number of top authors to return (default: 20)",
+              default: 20,
+            },
+          },
+        },
+      },
+      {
+        name: "analyze_branch_evolution",
+        description: "Analyze branch evolution: commit velocity, trends (increasing/stable/decreasing), contributor count, and time span. Track branch health over time.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+            branch: {
+              type: "string",
+              description: "Branch to analyze (default: current branch)",
+            },
+          },
+        },
+      },
+      {
+        name: "get_repo_insights",
+        description: "Get comprehensive repository insights: commit impact, top authors, branch health, and workflow detection in one call.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            repoPath: {
+              type: "string",
+              description: "Path to git repository (default: current)",
+            },
+          },
+        },
+      },
+      {
         name: "get_package_scripts",
         description: "Detect and list available package scripts from package.json, pyproject.toml, Makefile, or Cargo.toml.",
         inputSchema: {
@@ -1317,7 +1504,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "think",
-        description: "Sequential thinking tool. Add a thought to a chain-of-thought session. Great for reasoning, planning, debugging.",
+        description: "AI-powered sequential thinking with hypothesis extraction, evidence detection, confidence scoring, and automatic contradiction/support detection across the thought chain.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1627,42 +1814,52 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "create_todo",
-        description: "Create a new todo item.",
+        description: "Create a new todo item with AI-powered auto-priority detection, due date parsing, time estimation, and dependency tracking.",
         inputSchema: {
           type: "object",
           properties: {
-            text: { type: "string", description: "Todo text" },
-            priority: { type: "string", description: "Priority (low, medium, high)", default: "medium" },
+            text: { type: "string", description: "Todo text. Include keywords like 'urgent', 'bug', 'fix' for auto-priority. Include '~30min' or 'due: 2024-05-01' for auto-detection." },
+            priority: { type: "string", description: "Priority (low, medium, high, critical). If omitted, auto-detected from text.", default: "medium" },
+            tags: { type: "array", items: { type: "string" }, description: "Optional tags" },
+            blocks: { type: "array", items: { type: "string" }, description: "IDs of todos this todo blocks (must complete this first)" },
+            blockedBy: { type: "array", items: { type: "string" }, description: "IDs of todos that block this todo" },
+            dueAt: { type: "string", description: "Due date (YYYY-MM-DD). Auto-detected from text if omitted." },
+            estimatedMinutes: { type: "number", description: "Estimated time in minutes. Auto-detected from text if omitted." },
           },
           required: ["text"],
         },
       },
       {
         name: "list_todos",
-        description: "List all todos.",
+        description: "List todos with smart filtering by status, priority, tags, and overdue detection.",
         inputSchema: {
           type: "object",
-          properties: {},
+          properties: {
+            done: { type: "boolean", description: "Filter by completion status" },
+            priority: { type: "string", description: "Filter by priority (low, medium, high, critical)" },
+            tag: { type: "string", description: "Filter by tag" },
+            overdue: { type: "boolean", description: "Show only overdue items" },
+          },
         },
       },
       {
         name: "complete_todo",
-        description: "Mark a todo as completed.",
+        description: "Mark a todo as completed. Reports which blocked todos are now unblocked.",
         inputSchema: {
           type: "object",
           properties: {
-            id: { type: "number", description: "Todo ID" },
+            id: { type: "string", description: "Todo ID" },
           },
           required: ["id"],
         },
       },
       {
         name: "delete_todo",
-        description: "Delete a todo.",
+        description: "Delete a todo and clean up dependency references.",
         inputSchema: {
           type: "object",
           properties: {
-            id: { type: "number", description: "Todo ID" },
+            id: { type: "string", description: "Todo ID" },
           },
           required: ["id"],
         },
@@ -1696,7 +1893,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = recall(String(args.query), Number(args.limit ?? 10));
       break;
     case "list_memories":
-      result = listMemories(args.tag as string | undefined);
+      result = listMemories(args.tag as string | undefined, args.category as string | undefined);
       break;
     case "deduplicate_memories":
       result = await deduplicateMemories();
@@ -1712,6 +1909,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "import_memories":
       result = await importMemories(String(args.backupPath));
+      break;
+    case "get_memory_health":
+      result = await getMemoryHealth();
+      break;
+    case "prune_memories":
+      result = await pruneMemories(args.keepCount as number | undefined);
+      break;
+    case "consolidate_memories":
+      result = await consolidateMemories();
+      break;
+    case "forget_memory":
+      result = await forgetMemory(String(args.key));
+      break;
+    case "update_memory_importance":
+      result = await updateMemoryImportance(String(args.key), Number(args.importance));
+      break;
+    case "search_by_sentiment":
+      result = await searchBySentiment(args.sentiment as "positive" | "neutral" | "negative");
       break;
     case "run_command":
       result = await runCommand(
@@ -1780,6 +1995,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         retryDelay: Number(args.retryDelay ?? 1000),
         cache: Boolean(args.cache ?? false),
         cacheTTL: Number(args.cacheTTL ?? 60000),
+        expectJson: Boolean(args.expectJson ?? false),
+        validateStatus: args.validateStatus as number | undefined,
       });
       break;
     case "clear_http_cache":
@@ -1787,6 +2004,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "get_http_cache_stats":
       result = getHttpCacheStats();
+      break;
+    case "get_http_performance":
+      result = getHttpPerformance();
+      break;
+    case "reset_circuit_breaker":
+      result = resetCircuitBreaker(args.domain as string | undefined);
+      break;
+    case "clear_http_metrics":
+      result = clearHttpMetrics();
       break;
     case "list_processes":
       result = await listProcesses();
@@ -1909,6 +2135,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "get_git_config":
       result = await getGitConfig(args.repoPath as string | undefined);
+      break;
+    case "analyze_commit_impact":
+      result = await analyzeCommitImpact(args.repoPath as string | undefined, Number(args.limit ?? 10));
+      break;
+    case "get_author_stats":
+      result = await getAuthorStats(args.repoPath as string | undefined, Number(args.limit ?? 20));
+      break;
+    case "analyze_branch_evolution":
+      result = await analyzeBranchEvolution(args.repoPath as string | undefined, args.branch as string | undefined);
+      break;
+    case "get_repo_insights":
+      result = await getRepoInsights(args.repoPath as string | undefined);
       break;
     case "get_package_scripts":
       result = await getPackageScripts(args.path as string | undefined);
@@ -2058,10 +2296,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = evaluateMath(String(args.expression));
       break;
     case "create_todo":
-      result = await createTodo(String(args.text), (args.priority as "low" | "medium" | "high" | undefined) ?? "medium");
+      result = await createTodo(
+        String(args.text),
+        (args.priority as "low" | "medium" | "high" | "critical" | undefined),
+        (args.tags as string[]) ?? [],
+        (args.blocks as string[]) ?? [],
+        (args.blockedBy as string[]) ?? [],
+        args.dueAt as string | undefined,
+        args.estimatedMinutes as number | undefined
+      );
       break;
     case "list_todos":
-      result = await listTodos();
+      result = await listTodos(args.filter as { done?: boolean; priority?: string; tag?: string; overdue?: boolean } | undefined);
       break;
     case "complete_todo":
       result = await completeTodo(String(args.id));

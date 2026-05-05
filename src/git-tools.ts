@@ -30,6 +30,39 @@ interface WorkflowAnalysis {
   recommendations: string[];
 }
 
+interface CommitImpact {
+  hash: string;
+  message: string;
+  author: string;
+  date: string;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  blastRadius: number;
+  affectedFiles: string[];
+}
+
+interface AuthorStats {
+  author: string;
+  commits: number;
+  linesAdded: number;
+  linesDeleted: number;
+  netLines: number;
+  firstCommit: string;
+  lastCommit: string;
+  avgCommitSize: number;
+}
+
+interface BranchEvolution {
+  branch: string;
+  commits: number;
+  firstCommit: string;
+  lastCommit: string;
+  velocity: number; // commits per week
+  trend: "increasing" | "stable" | "decreasing";
+  contributors: number;
+}
+
 function runGit(args: string[], cwd?: string, timeout = 15000): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve) => {
     const child = spawn("git", args, {
@@ -114,7 +147,6 @@ export async function gitDiff(repoPath?: string, target?: string): Promise<strin
     return JSON.stringify(error, null, 2);
   }
   if (!result.stdout) return "No changes.";
-  // Truncate huge diffs
   return result.stdout.length > 50000 ? result.stdout.slice(0, 50000) + "\n... (truncated)" : result.stdout;
 }
 
@@ -388,13 +420,11 @@ export async function analyzeBranchHealth(repoPath?: string): Promise<string> {
       const behindMatch = upstream.match(/behind\s+(\d+)/);
       const isCurrent = line.startsWith("*");
 
-      // Check if branch is stale (no commits in 90 days)
       const logResult = await runGit(["log", "-1", "--format=%ct", name], repoPath);
       const lastCommit = parseInt(logResult.stdout || "0");
       const daysSinceCommit = Math.floor((Date.now() / 1000 - lastCommit) / 86400);
       const stale = daysSinceCommit > 90;
 
-      // Check for uncommitted changes
       const statusResult = await runGit(["status", "--porcelain"], repoPath);
       const hasUncommitted = statusResult.stdout.length > 0 && isCurrent;
 
@@ -440,17 +470,14 @@ export async function analyzeWorkflow(repoPath?: string): Promise<string> {
   const mainBranch = localBranches.find((b) => ["main", "master", "develop"].includes(b)) || localBranches[0] || "main";
   const recommendations: string[] = [];
 
-  // Detect GitFlow
   if (localBranches.includes("develop") && localBranches.some((b) => b.startsWith("feature/"))) {
     workflowType = "GitFlow";
     recommendations.push("GitFlow workflow detected. Ensure proper branch naming conventions.");
   }
-  // Detect Trunk-Based
   else if (localBranches.length <= 2 || localBranches.every((b) => b === mainBranch || b.startsWith("hotfix/"))) {
     workflowType = "TrunkBased";
     recommendations.push("Trunk-based development detected. Consider using feature flags for releases.");
   }
-  // Detect Feature Branch
   else if (localBranches.some((b) => b.startsWith("feature/") || b.startsWith("feat/"))) {
     workflowType = "FeatureBranch";
     recommendations.push("Feature branch workflow detected. Keep branches short-lived and merge frequently.");
@@ -481,13 +508,11 @@ export async function scoreCommitQuality(repoPath?: string, limit = 10): Promise
     const issues: string[] = [];
     let score = 100;
 
-    // Conventional commits check
     if (!message.match(/^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert|BREAKING)/)) {
       issues.push("Not following conventional commits");
       score -= 20;
     }
 
-    // Message length check
     if (message.length < 10) {
       issues.push("Message too short");
       score -= 30;
@@ -497,13 +522,11 @@ export async function scoreCommitQuality(repoPath?: string, limit = 10): Promise
       score -= 10;
     }
 
-    // Imperative mood check
     if (!message.match(/^[a-z]/)) {
       issues.push("Not using imperative mood");
       score -= 10;
     }
 
-    // Period check
     if (message.endsWith(".")) {
       issues.push("Message should not end with period");
       score -= 5;
@@ -577,5 +600,200 @@ export async function getGitConfig(repoPath?: string): Promise<string> {
   return JSON.stringify({
     local: parseConfig(localResult.stdout),
     global: parseConfig(globalResult.stdout),
+  }, null, 2);
+}
+
+// ─── NEW: Enhanced Git Analysis ─────────
+
+export async function analyzeCommitImpact(repoPath?: string, limit = 10): Promise<string> {
+  const result = await runGit(["log", `--max-count=${limit}`, "--numstat", "--format=%H %s %an %ad"], repoPath);
+  if (result.exitCode !== 0 && result.stderr) {
+    const error = parseGitError(result.stderr);
+    return JSON.stringify(error, null, 2);
+  }
+  if (!result.stdout) return "No commits found.";
+
+  const impacts: CommitImpact[] = [];
+  const lines = result.stdout.split("\n");
+  let i = 0;
+
+  while (i < lines.length) {
+    const headerLine = lines[i];
+    const headerMatch = headerLine.match(/^([a-f0-9]+)\s+(.+)\s+(.+)\s+(.+)$/);
+    if (!headerMatch) {
+      i++;
+      continue;
+    }
+
+    const [, hash, message, author, date] = headerMatch;
+    let insertions = 0;
+    let deletions = 0;
+    const affectedFiles: string[] = [];
+    let filesChanged = 0;
+
+    i++;
+    while (i < lines.length && lines[i].match(/^\d/)) {
+      const parts = lines[i].split(/\s+/);
+      if (parts.length >= 3) {
+        const [add, del, file] = parts;
+        if (add !== "-") insertions += parseInt(add);
+        if (del !== "-") deletions += parseInt(del);
+        affectedFiles.push(file);
+        filesChanged++;
+      }
+      i++;
+    }
+
+    const blastRadius = insertions + deletions;
+    impacts.push({
+      hash: hash.slice(0, 8),
+      message,
+      author,
+      date,
+      filesChanged,
+      insertions,
+      deletions,
+      blastRadius,
+      affectedFiles: affectedFiles.slice(0, 10),
+    });
+  }
+
+  const avgBlastRadius = impacts.length > 0 ? Math.round(impacts.reduce((a, c) => a + c.blastRadius, 0) / impacts.length) : 0;
+  const maxBlastRadius = Math.max(...impacts.map(i => i.blastRadius), 0);
+
+  return JSON.stringify({
+    commits: impacts,
+    summary: {
+      avgBlastRadius,
+      maxBlastRadius,
+      totalFilesChanged: impacts.reduce((a, c) => a + c.filesChanged, 0),
+      totalInsertions: impacts.reduce((a, c) => a + c.insertions, 0),
+      totalDeletions: impacts.reduce((a, c) => a + c.deletions, 0),
+    },
+  }, null, 2);
+}
+
+export async function getAuthorStats(repoPath?: string, limit = 20): Promise<string> {
+  const result = await runGit(["log", "--all", "--format=%an %ae %ad", "--date=iso"], repoPath);
+  if (result.exitCode !== 0 && result.stderr) {
+    const error = parseGitError(result.stderr);
+    return JSON.stringify(error, null, 2);
+  }
+  if (!result.stdout) return "No commits found.";
+
+  const authorCommits = new Map<string, { count: number; dates: string[] }>();
+  for (const line of result.stdout.split("\n").filter(Boolean)) {
+    const parts = line.split(" ");
+    const author = parts.slice(0, -2).join(" ");
+    const date = parts.slice(-2).join(" ");
+    authorCommits.set(author, {
+      count: (authorCommits.get(author)?.count || 0) + 1,
+      dates: [...(authorCommits.get(author)?.dates || []), date],
+    });
+  }
+
+  const stats: AuthorStats[] = [];
+  for (const [author, data] of authorCommits) {
+    const shortLogResult = await runGit(["log", "--author", author, "--numstat", "--format=%H"], repoPath);
+    const shortLines = shortLogResult.stdout.split("\n").filter(Boolean);
+    let linesAdded = 0;
+    let linesDeleted = 0;
+
+    for (const line of shortLines) {
+      if (line.match(/^\d/)) {
+        const parts = line.split(/\s+/);
+        if (parts.length >= 3) {
+          if (parts[0] !== "-") linesAdded += parseInt(parts[0]);
+          if (parts[1] !== "-") linesDeleted += parseInt(parts[1]);
+        }
+      }
+    }
+
+    const sortedDates = data.dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    stats.push({
+      author,
+      commits: data.count,
+      linesAdded,
+      linesDeleted,
+      netLines: linesAdded - linesDeleted,
+      firstCommit: sortedDates[0],
+      lastCommit: sortedDates[sortedDates.length - 1],
+      avgCommitSize: data.count > 0 ? Math.round((linesAdded + linesDeleted) / data.count) : 0,
+    });
+  }
+
+  stats.sort((a, b) => b.commits - a.commits);
+
+  return JSON.stringify({
+    authors: stats.slice(0, limit),
+    summary: {
+      totalAuthors: stats.length,
+      totalCommits: stats.reduce((a, c) => a + c.commits, 0),
+      topContributor: stats[0]?.author || "none",
+    },
+  }, null, 2);
+}
+
+export async function analyzeBranchEvolution(repoPath?: string, branch?: string): Promise<string> {
+  const branchesResult = await runGit(["branch", "-a"], repoPath);
+  if (branchesResult.exitCode !== 0 && branchesResult.stderr) {
+    return JSON.stringify(parseGitError(branchesResult.stderr), null, 2);
+  }
+
+  const branches = branchesResult.stdout.split("\n").filter(Boolean)
+    .map(l => l.replace("*", "").trim().replace("remotes/", ""))
+    .filter(b => !b.includes("/"));
+
+  const targetBranch = branch || branches[0];
+  if (!targetBranch) return JSON.stringify({ error: "No branches found" }, null, 2);
+
+  const logResult = await runGit(["log", targetBranch, "--format=%ad", "--date=iso"], repoPath);
+  const dates = logResult.stdout.split("\n").filter(Boolean).map(d => new Date(d).getTime());
+
+  if (dates.length === 0) return JSON.stringify({ error: "No commits in branch" }, null, 2);
+
+  const firstCommit = new Date(Math.min(...dates)).toISOString();
+  const lastCommit = new Date(Math.max(...dates)).toISOString();
+  const daysSpan = (new Date(lastCommit).getTime() - new Date(firstCommit).getTime()) / (1000 * 60 * 60 * 24);
+  const weeksSpan = Math.max(daysSpan / 7, 1);
+  const velocity = dates.length / weeksSpan;
+
+  const authorsResult = await runGit(["log", targetBranch, "--format=%an"], repoPath);
+  const uniqueAuthors = new Set(authorsResult.stdout.split("\n").filter(Boolean));
+
+  const recentDates = dates.slice(-20);
+  const olderDates = dates.slice(0, -20);
+  const recentVelocity = recentDates.length / Math.max(weeksSpan * 0.5, 1);
+  const olderVelocity = olderDates.length / Math.max(weeksSpan * 0.5, 1);
+
+  let trend: BranchEvolution["trend"] = "stable";
+  if (recentVelocity > olderVelocity * 1.2) trend = "increasing";
+  if (recentVelocity < olderVelocity * 0.8) trend = "decreasing";
+
+  return JSON.stringify({
+    branch: targetBranch,
+    commits: dates.length,
+    firstCommit,
+    lastCommit,
+    velocity: Math.round(velocity * 10) / 10,
+    trend,
+    contributors: uniqueAuthors.size,
+    daysSpan: Math.round(daysSpan),
+  }, null, 2);
+}
+
+export async function getRepoInsights(repoPath?: string): Promise<string> {
+  const [impact, authors, health, workflow] = await Promise.all([
+    analyzeCommitImpact(repoPath, 5),
+    getAuthorStats(repoPath, 5),
+    analyzeBranchHealth(repoPath),
+    analyzeWorkflow(repoPath),
+  ]);
+
+  return JSON.stringify({
+    commitImpact: JSON.parse(impact),
+    topAuthors: JSON.parse(authors),
+    branchHealth: JSON.parse(health),
+    workflow: JSON.parse(workflow),
   }, null, 2);
 }

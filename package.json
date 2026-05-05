@@ -1,6 +1,6 @@
 {
   "name": "mcp-devkit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "One MCP server to rule them all — project intelligence, persistent memory, cross-platform terminal, git tools, and code search. Works on Windows, Mac, and Linux.",
   "type": "module",
   "main": "dist/index.js",

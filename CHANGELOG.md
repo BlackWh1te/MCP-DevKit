@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-05-05
+
+### Added
+
+- **Snippet Manager** (`src/snippets.ts`, 8 tools) — Save, search, retrieve, update, and delete code snippets with auto-detected language (40+ languages supported), tags, descriptions, and view tracking. Export/import JSON backups with merge-on-conflict.
+- **Template Engine** (`src/templates.ts`, 6 tools) — 11 built-in boilerplate templates: React component, custom hook, API route, test file, Python function, Rust struct, Go HTTP handler, SQL table, Dockerfile, GitHub Action workflow, and README. Create custom templates with `{{VariableName}}` substitution. Render to file or inline.
+- **Batch File Operations** (`src/batch-files.ts`, 6 tools) — batch_read, batch_write, batch_edit, batch_delete, batch_copy, batch_move. Process multiple files atomically with per-file error reporting and metadata (size, line count, bytes).
+- **Archive Support** (`src/archive.ts`, 5 tools) — create_archive (zip/tar/tar.gz), extract_archive, get_archive_info, gzip_file, gunzip_file. Cross-platform using PowerShell on Windows and native Unix tools on macOS/Linux.
+- **Config Manager** (`src/config.ts`, 7 tools) — Sectioned configuration with defaults: preferences, memory, http, git, snippets, templates, ui. get_config, set_config (auto-JSON-parse), reset_config, list_config_sections, delete_config_key, export_config, import_config.
+- **34 new tests** across 5 new test files: `snippets.test.ts` (10 tests), `templates.test.ts` (11 tests), `batch-files.test.ts` (6 tests), `archive.test.ts` (2 tests), `config.test.ts` (7 tests).
+- Server now registers **95+ tools** in `index.ts` (up from 81).
+
 ## [1.0.4] - 2025-05-05
 
 ### Fixed

@@ -2,24 +2,48 @@
 // BlackWhite — MCP DevKit
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  TextContent,
-} from "@modelcontextprotocol/sdk/types.js";
+import { CallToolRequestSchema, ListToolsRequestSchema, TextContent } from "@modelcontextprotocol/sdk/types.js";
 
 import { scanProject, getProjectSummary, explainArchitecture } from "./scanner.js";
-import { remember, recall, listMemories, deduplicateMemories, summarizeMemory, findRelatedMemories, exportMemories, importMemories, getMemoryHealth, pruneMemories, consolidateMemories, forgetMemory, updateMemoryImportance, searchBySentiment } from "./memory.js";
+import {
+  remember,
+  recall,
+  listMemories,
+  deduplicateMemories,
+  summarizeMemory,
+  findRelatedMemories,
+  exportMemories,
+  importMemories,
+  getMemoryHealth,
+  pruneMemories,
+  consolidateMemories,
+  forgetMemory,
+  updateMemoryImportance,
+  searchBySentiment,
+} from "./memory.js";
 import { runCommand } from "./terminal.js";
 import {
-  gitStatus, gitLog, gitDiff,
-  gitAdd, gitCommit, gitBranches, gitCheckout,
-  gitStash, gitStashPop, gitStashList,
-  gitUnstage, gitRestore,
-  gitPush, gitPull, gitRemote,
-  gitMerge, gitRebase,
-  gitTags, gitCreateTag,
-  gitBlame, gitShow,
+  gitStatus,
+  gitLog,
+  gitDiff,
+  gitAdd,
+  gitCommit,
+  gitBranches,
+  gitCheckout,
+  gitStash,
+  gitStashPop,
+  gitStashList,
+  gitUnstage,
+  gitRestore,
+  gitPush,
+  gitPull,
+  gitRemote,
+  gitMerge,
+  gitRebase,
+  gitTags,
+  gitCreateTag,
+  gitBlame,
+  gitShow,
   analyzeBranchHealth,
   analyzeWorkflow,
   scoreCommitQuality,
@@ -31,26 +55,106 @@ import {
   getRepoInsights,
 } from "./git-tools.js";
 import { searchCode, getFileContext } from "./search.js";
-import { readFile, writeFile, editFile, deleteFile, moveFile, copyFile, createDirectory, removeDirectory, listDirectory } from "./files.js";
-import { httpRequest, clearHttpCache, getHttpCacheStats, getHttpPerformance, resetCircuitBreaker, clearHttpMetrics } from "./http.js";
-import { listProcesses, killProcess, getProcessTree, monitorProcess, filterProcesses, clearProcessHistory, getProcessHistory } from "./process.js";
+import {
+  readFile,
+  writeFile,
+  editFile,
+  deleteFile,
+  moveFile,
+  copyFile,
+  createDirectory,
+  removeDirectory,
+  listDirectory,
+} from "./files.js";
+import {
+  httpRequest,
+  clearHttpCache,
+  getHttpCacheStats,
+  getHttpPerformance,
+  resetCircuitBreaker,
+  clearHttpMetrics,
+} from "./http.js";
+import {
+  listProcesses,
+  killProcess,
+  getProcessTree,
+  monitorProcess,
+  filterProcesses,
+  clearProcessHistory,
+  getProcessHistory,
+} from "./process.js";
 import { getSystemInfo, checkPort, getEnvFile, getDiskUsage, getNetworkInfo, getEnvVarAnalysis } from "./system.js";
 import { getCodeStats } from "./stats.js";
 import { generateCommitMessage, validateCommit } from "./ai-commit.js";
-import { getPackageScripts, runPackageScript, getDependencies, clearPackageCache, getPackageCacheStats, getPackageInfo } from "./package-runner.js";
 import {
-  generateUUID, hashText, base64Encode, base64Decode,
-  urlEncode, urlDecode, formatJson,
-  getCurrentTime, convertTime,
+  getPackageScripts,
+  runPackageScript,
+  getDependencies,
+  clearPackageCache,
+  getPackageCacheStats,
+  getPackageInfo,
+} from "./package-runner.js";
+import {
+  generateUUID,
+  hashText,
+  base64Encode,
+  base64Decode,
+  urlEncode,
+  urlDecode,
+  formatJson,
+  getCurrentTime,
+  convertTime,
 } from "./utils.js";
 import { think, getThoughts, clearThinking } from "./thinking.js";
 import { dbSet, dbGet, dbDelete, dbList, dbQuery } from "./database.js";
-import { fetchText, fetchJson, getFileInfo, directoryTree, fetchStructured, extractLinks, extractForms } from "./web.js";
 import {
-  diffText, regexTest, generatePassword, jwtDecode,
-  analyzeText, convertColor, evaluateMath,
+  fetchText,
+  fetchJson,
+  getFileInfo,
+  directoryTree,
+  fetchStructured,
+  extractLinks,
+  extractForms,
+} from "./web.js";
+import {
+  diffText,
+  regexTest,
+  generatePassword,
+  jwtDecode,
+  analyzeText,
+  convertColor,
+  evaluateMath,
 } from "./dev-utils.js";
 import { createTodo, listTodos, completeTodo, deleteTodo } from "./todos.js";
+import {
+  saveSnippet,
+  findSnippet,
+  getSnippet,
+  listSnippets,
+  deleteSnippet,
+  updateSnippet,
+  exportSnippets,
+  importSnippets,
+} from "./snippets.js";
+import {
+  listTemplates,
+  getTemplate,
+  renderTemplateFile,
+  createTemplate,
+  deleteTemplate,
+  searchTemplates,
+} from "./templates.js";
+import { batchRead, batchWrite, batchEdit, batchDelete, batchCopy, batchMove } from "./batch-files.js";
+import { createArchive, extractArchive, getArchiveInfo, gzipFile, gunzipFile } from "./archive.js";
+import {
+  getConfig,
+  setConfig,
+  resetConfig,
+  listConfigSections,
+  deleteConfigKey,
+  exportConfig,
+  importConfig,
+} from "./config.js";
 
 const server = new Server(
   {
@@ -61,7 +165,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -144,8 +248,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "recall",
-        description:
-          "Search stored memories by keyword. Returns the most relevant matches.",
+        description: "Search stored memories by keyword. Returns the most relevant matches.",
         inputSchema: {
           type: "object",
           properties: {
@@ -164,7 +267,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_memories",
-        description: "List all stored memory keys, tags, categories, sentiment, and freshness. Filter by tag or category.",
+        description:
+          "List all stored memory keys, tags, categories, sentiment, and freshness. Filter by tag or category.",
         inputSchema: {
           type: "object",
           properties: {
@@ -244,7 +348,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_memory_health",
-        description: "Get a comprehensive health report of the memory system: total count, active vs stale, sentiment distribution, top categories, growth, and unused memories.",
+        description:
+          "Get a comprehensive health report of the memory system: total count, active vs stale, sentiment distribution, top categories, growth, and unused memories.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -252,7 +357,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "prune_memories",
-        description: "Remove low-value memories based on importance, access count, and decay. Keeps the most valuable memories. Optional keepCount to override default 80% retention.",
+        description:
+          "Remove low-value memories based on importance, access count, and decay. Keeps the most valuable memories. Optional keepCount to override default 80% retention.",
         inputSchema: {
           type: "object",
           properties: {
@@ -265,7 +371,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "consolidate_memories",
-        description: "Auto-merge highly similar (>90%) duplicate memories into single entries. Updates tags and importance.",
+        description:
+          "Auto-merge highly similar (>90%) duplicate memories into single entries. Updates tags and importance.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -438,8 +545,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_file_context",
-        description:
-          "Read a file with smart chunking. Returns the file content, or a specific range/lines.",
+        description: "Read a file with smart chunking. Returns the file content, or a specific range/lines.",
         inputSchema: {
           type: "object",
           properties: {
@@ -494,7 +600,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "edit_file",
-        description: "Replace a unique string in a file. Returns an error if the string is not found or appears more than once.",
+        description:
+          "Replace a unique string in a file. Returns an error if the string is not found or appears more than once.",
         inputSchema: {
           type: "object",
           properties: {
@@ -549,7 +656,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "http_request",
-        description: "Make HTTP GET/POST/PUT/DELETE requests with circuit breaker, retry logic with exponential backoff, response caching, and performance tracking. Returns status, headers, body, latency, validation warnings, and attempt count.",
+        description:
+          "Make HTTP GET/POST/PUT/DELETE requests with circuit breaker, retry logic with exponential backoff, response caching, and performance tracking. Returns status, headers, body, latency, validation warnings, and attempt count.",
         inputSchema: {
           type: "object",
           properties: {
@@ -626,7 +734,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_http_performance",
-        description: "Get HTTP performance metrics: total requests, success rate, avg/P95/P99 latency, and per-domain stats including circuit breaker status.",
+        description:
+          "Get HTTP performance metrics: total requests, success rate, avg/P95/P99 latency, and per-domain stats including circuit breaker status.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -634,7 +743,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "reset_circuit_breaker",
-        description: "Reset the circuit breaker for a specific domain or all domains. Allows retrying requests to previously failed domains.",
+        description:
+          "Reset the circuit breaker for a specific domain or all domains. Allows retrying requests to previously failed domains.",
         inputSchema: {
           type: "object",
           properties: {
@@ -655,7 +765,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "list_processes",
-        description: "List running processes (cross-platform: Windows tasklist, Unix ps). Returns PID, name, user, CPU, memory, and start time. Maintains monitoring history.",
+        description:
+          "List running processes (cross-platform: Windows tasklist, Unix ps). Returns PID, name, user, CPU, memory, and start time. Maintains monitoring history.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -663,7 +774,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "kill_process",
-        description: "Kill a process by PID. Cross-platform (taskkill on Windows, kill on Unix). Removes from monitoring history.",
+        description:
+          "Kill a process by PID. Cross-platform (taskkill on Windows, kill on Unix). Removes from monitoring history.",
         inputSchema: {
           type: "object",
           properties: {
@@ -677,7 +789,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_process_tree",
-        description: "Get a hierarchical tree view of processes showing parent-child relationships. Optionally filter by specific PID.",
+        description:
+          "Get a hierarchical tree view of processes showing parent-child relationships. Optionally filter by specific PID.",
         inputSchema: {
           type: "object",
           properties: {
@@ -690,7 +803,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "monitor_process",
-        description: "Monitor a specific process over time, sampling CPU and memory usage at regular intervals. Returns statistics including averages and maximums.",
+        description:
+          "Monitor a specific process over time, sampling CPU and memory usage at regular intervals. Returns statistics including averages and maximums.",
         inputSchema: {
           type: "object",
           properties: {
@@ -755,7 +869,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_system_info",
-        description: "Get system information: OS, architecture, memory, CPU count, Node version, environment variables.",
+        description:
+          "Get system information: OS, architecture, memory, CPU count, Node version, environment variables.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -782,7 +897,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_env_file",
-        description: "Read a .env file and return variable names with values (secrets masked). Detects and lists secret keys.",
+        description:
+          "Read a .env file and return variable names with values (secrets masked). Detects and lists secret keys.",
         inputSchema: {
           type: "object",
           properties: {
@@ -796,7 +912,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_disk_usage",
-        description: "Get disk usage information for the system or specific directory. Cross-platform (Windows wmic, Unix df).",
+        description:
+          "Get disk usage information for the system or specific directory. Cross-platform (Windows wmic, Unix df).",
         inputSchema: {
           type: "object",
           properties: {
@@ -809,7 +926,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_network_info",
-        description: "Get detailed network interface information including IP addresses, MAC addresses, and CIDR notation.",
+        description:
+          "Get detailed network interface information including IP addresses, MAC addresses, and CIDR notation.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -817,7 +935,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_env_var_analysis",
-        description: "Analyze environment variables by category (PATH, HOME, SHELL, cloud providers) and detect sensitive variables.",
+        description:
+          "Analyze environment variables by category (PATH, HOME, SHELL, cloud providers) and detect sensitive variables.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -825,7 +944,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_code_stats",
-        description: "AI-enhanced code analysis: lines of code, language breakdown, TODO/FIXME counts, file sizes, complexity scoring, import analysis, comment coverage, hotspot detection, and architecture metrics (modularity, cohesion, coupling). Cross-platform.",
+        description:
+          "AI-enhanced code analysis: lines of code, language breakdown, TODO/FIXME counts, file sizes, complexity scoring, import analysis, comment coverage, hotspot detection, and architecture metrics (modularity, cohesion, coupling). Cross-platform.",
         inputSchema: {
           type: "object",
           properties: {
@@ -839,7 +959,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "generate_commit_message",
-        description: "AI-powered commit message generator. Analyzes staged (or unstaged) git diff and suggests a conventional commit message with type, scope, breaking change detection, issues/refs extraction, and footer generation.",
+        description:
+          "AI-powered commit message generator. Analyzes staged (or unstaged) git diff and suggests a conventional commit message with type, scope, breaking change detection, issues/refs extraction, and footer generation.",
         inputSchema: {
           type: "object",
           properties: {
@@ -852,7 +973,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "validate_commit",
-        description: "Validate a commit message against conventional commits specification. Checks format, type, description length, and imperative mood.",
+        description:
+          "Validate a commit message against conventional commits specification. Checks format, type, description length, and imperative mood.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1278,7 +1400,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "analyze_commit_impact",
-        description: "Analyze commit impact: blast radius (insertions + deletions), files changed, and affected files. Helps identify high-impact commits.",
+        description:
+          "Analyze commit impact: blast radius (insertions + deletions), files changed, and affected files. Helps identify high-impact commits.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1296,7 +1419,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_author_stats",
-        description: "Get author contribution statistics: commits, lines added/deleted, net contribution, first/last commit, and average commit size per author.",
+        description:
+          "Get author contribution statistics: commits, lines added/deleted, net contribution, first/last commit, and average commit size per author.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1314,7 +1438,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "analyze_branch_evolution",
-        description: "Analyze branch evolution: commit velocity, trends (increasing/stable/decreasing), contributor count, and time span. Track branch health over time.",
+        description:
+          "Analyze branch evolution: commit velocity, trends (increasing/stable/decreasing), contributor count, and time span. Track branch health over time.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1331,7 +1456,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_repo_insights",
-        description: "Get comprehensive repository insights: commit impact, top authors, branch health, and workflow detection in one call.",
+        description:
+          "Get comprehensive repository insights: commit impact, top authors, branch health, and workflow detection in one call.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1344,7 +1470,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_package_scripts",
-        description: "Detect and list available package scripts from package.json, pyproject.toml, Makefile, or Cargo.toml.",
+        description:
+          "Detect and list available package scripts from package.json, pyproject.toml, Makefile, or Cargo.toml.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1377,7 +1504,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_dependencies",
-        description: "Get project dependencies with caching. Supports Node.js (package.json), Python (pyproject.toml), and Rust (Cargo.toml).",
+        description:
+          "Get project dependencies with caching. Supports Node.js (package.json), Python (pyproject.toml), and Rust (Cargo.toml).",
         inputSchema: {
           type: "object",
           properties: {
@@ -1504,7 +1632,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "think",
-        description: "AI-powered sequential thinking with hypothesis extraction, evidence detection, confidence scoring, and automatic contradiction/support detection across the thought chain.",
+        description:
+          "AI-powered sequential thinking with hypothesis extraction, evidence detection, confidence scoring, and automatic contradiction/support detection across the thought chain.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1620,7 +1749,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "fetch_structured",
-        description: "Fetch a URL and return structured data extraction: title, description, metadata, links, forms, headings. Supports CSS selector matching.",
+        description:
+          "Fetch a URL and return structured data extraction: title, description, metadata, links, forms, headings. Supports CSS selector matching.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1761,8 +1891,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             length: { type: "number", description: "Password length (default: 16)", default: 16 },
-            includeUppercase: { type: "boolean", description: "Include uppercase letters (default: true)", default: true },
-            includeLowercase: { type: "boolean", description: "Include lowercase letters (default: true)", default: true },
+            includeUppercase: {
+              type: "boolean",
+              description: "Include uppercase letters (default: true)",
+              default: true,
+            },
+            includeLowercase: {
+              type: "boolean",
+              description: "Include lowercase letters (default: true)",
+              default: true,
+            },
             includeNumbers: { type: "boolean", description: "Include numbers (default: true)", default: true },
             includeSymbols: { type: "boolean", description: "Include symbols (default: true)", default: true },
           },
@@ -1814,17 +1952,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "create_todo",
-        description: "Create a new todo item with AI-powered auto-priority detection, due date parsing, time estimation, and dependency tracking.",
+        description:
+          "Create a new todo item with AI-powered auto-priority detection, due date parsing, time estimation, and dependency tracking.",
         inputSchema: {
           type: "object",
           properties: {
-            text: { type: "string", description: "Todo text. Include keywords like 'urgent', 'bug', 'fix' for auto-priority. Include '~30min' or 'due: 2024-05-01' for auto-detection." },
-            priority: { type: "string", description: "Priority (low, medium, high, critical). If omitted, auto-detected from text.", default: "medium" },
+            text: {
+              type: "string",
+              description:
+                "Todo text. Include keywords like 'urgent', 'bug', 'fix' for auto-priority. Include '~30min' or 'due: 2024-05-01' for auto-detection.",
+            },
+            priority: {
+              type: "string",
+              description: "Priority (low, medium, high, critical). If omitted, auto-detected from text.",
+              default: "medium",
+            },
             tags: { type: "array", items: { type: "string" }, description: "Optional tags" },
-            blocks: { type: "array", items: { type: "string" }, description: "IDs of todos this todo blocks (must complete this first)" },
+            blocks: {
+              type: "array",
+              items: { type: "string" },
+              description: "IDs of todos this todo blocks (must complete this first)",
+            },
             blockedBy: { type: "array", items: { type: "string" }, description: "IDs of todos that block this todo" },
             dueAt: { type: "string", description: "Due date (YYYY-MM-DD). Auto-detected from text if omitted." },
-            estimatedMinutes: { type: "number", description: "Estimated time in minutes. Auto-detected from text if omitted." },
+            estimatedMinutes: {
+              type: "number",
+              description: "Estimated time in minutes. Auto-detected from text if omitted.",
+            },
           },
           required: ["text"],
         },
@@ -1864,6 +2018,450 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["id"],
         },
       },
+      // Snippets
+      {
+        name: "save_snippet",
+        description: "Save a code snippet with auto-detected language, tags, and description for later retrieval.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Snippet name" },
+            code: { type: "string", description: "The code/content to save" },
+            language: { type: "string", description: "Override auto-detected language" },
+            tags: { type: "array", items: { type: "string" }, description: "Tags for categorization" },
+            description: { type: "string", description: "Optional description" },
+            filename: { type: "string", description: "Original filename (helps detect language)" },
+          },
+          required: ["name", "code"],
+        },
+      },
+      {
+        name: "find_snippet",
+        description: "Search saved snippets by name, content, tags, or language.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" },
+            language: { type: "string", description: "Filter by language" },
+            limit: { type: "number", description: "Max results (default: 10)", default: 10 },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "get_snippet",
+        description: "Retrieve a specific snippet by ID.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Snippet ID" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "list_snippets",
+        description: "List all saved snippets, optionally filtered by language or tag.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            language: { type: "string", description: "Filter by language" },
+            tag: { type: "string", description: "Filter by tag" },
+          },
+        },
+      },
+      {
+        name: "delete_snippet",
+        description: "Delete a snippet by ID.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Snippet ID" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "update_snippet",
+        description: "Update an existing snippet's name, code, language, tags, or description.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Snippet ID" },
+            name: { type: "string", description: "New name" },
+            code: { type: "string", description: "New code" },
+            language: { type: "string", description: "New language" },
+            tags: { type: "array", items: { type: "string" }, description: "New tags" },
+            description: { type: "string", description: "New description" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "export_snippets",
+        description: "Export all snippets to a JSON backup file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            exportPath: {
+              type: "string",
+              description: "Output path (optional, default: ~/.mcp-devkit/snippets-export.json)",
+            },
+          },
+        },
+      },
+      {
+        name: "import_snippets",
+        description: "Import snippets from a JSON backup file. Merges duplicates.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            importPath: { type: "string", description: "Path to JSON backup file" },
+          },
+          required: ["importPath"],
+        },
+      },
+      // Templates
+      {
+        name: "list_templates",
+        description:
+          "List available file templates (React component, test file, API route, etc.) with optional filtering.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            category: {
+              type: "string",
+              description:
+                "Filter by category (react, backend, testing, python, rust, go, database, devops, documentation)",
+            },
+            language: { type: "string", description: "Filter by language" },
+          },
+        },
+      },
+      {
+        name: "get_template",
+        description: "Show a template's content and variables.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Template ID" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "render_template",
+        description: "Render a template with variables and optionally write to a file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Template ID" },
+            variables: { type: "object", description: "Variable key-value pairs to substitute {{VariableName}}" },
+            outputPath: { type: "string", description: "If provided, writes rendered output to this file path" },
+          },
+          required: ["id", "variables"],
+        },
+      },
+      {
+        name: "create_template",
+        description: "Create a custom template with variables for reuse.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Template name" },
+            content: { type: "string", description: "Template content with {{VariableName}} placeholders" },
+            language: { type: "string", description: "Language identifier" },
+            category: { type: "string", description: "Category for grouping" },
+            description: { type: "string", description: "What this template generates" },
+            variables: { type: "array", items: { type: "string" }, description: "Variable names used in content" },
+            tags: { type: "array", items: { type: "string" }, description: "Tags" },
+          },
+          required: ["name", "content", "language", "category"],
+        },
+      },
+      {
+        name: "delete_template",
+        description: "Delete a custom template (cannot delete built-ins).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Template ID" },
+          },
+          required: ["id"],
+        },
+      },
+      {
+        name: "search_templates",
+        description: "Search templates by name, description, category, or language.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" },
+          },
+          required: ["query"],
+        },
+      },
+      // Batch file operations
+      {
+        name: "batch_read",
+        description: "Read multiple files at once and return results with metadata.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePaths: { type: "array", items: { type: "string" }, description: "Array of file paths to read" },
+          },
+          required: ["filePaths"],
+        },
+      },
+      {
+        name: "batch_write",
+        description: "Write multiple files at once atomically.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            writes: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  filePath: { type: "string" },
+                  content: { type: "string" },
+                },
+                required: ["filePath", "content"],
+              },
+              description: "Array of {filePath, content} objects",
+            },
+          },
+          required: ["writes"],
+        },
+      },
+      {
+        name: "batch_edit",
+        description: "Apply string replacements across multiple files safely.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            edits: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  filePath: { type: "string" },
+                  replacements: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        oldString: { type: "string" },
+                        newString: { type: "string" },
+                      },
+                      required: ["oldString", "newString"],
+                    },
+                  },
+                },
+                required: ["filePath", "replacements"],
+              },
+              description: "Array of {filePath, replacements[]} objects",
+            },
+          },
+          required: ["edits"],
+        },
+      },
+      {
+        name: "batch_delete",
+        description: "Delete multiple files at once.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePaths: { type: "array", items: { type: "string" }, description: "Array of file paths to delete" },
+          },
+          required: ["filePaths"],
+        },
+      },
+      {
+        name: "batch_copy",
+        description: "Copy multiple files at once.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            copies: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  source: { type: "string" },
+                  destination: { type: "string" },
+                },
+                required: ["source", "destination"],
+              },
+              description: "Array of {source, destination} objects",
+            },
+          },
+          required: ["copies"],
+        },
+      },
+      {
+        name: "batch_move",
+        description: "Move/rename multiple files at once with cross-device fallback.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            moves: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  source: { type: "string" },
+                  destination: { type: "string" },
+                },
+                required: ["source", "destination"],
+              },
+              description: "Array of {source, destination} objects",
+            },
+          },
+          required: ["moves"],
+        },
+      },
+      // Archive
+      {
+        name: "create_archive",
+        description: "Create a zip, tar, or tar.gz archive from source paths.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sourcePaths: { type: "array", items: { type: "string" }, description: "Files/directories to archive" },
+            outputPath: { type: "string", description: "Output archive path" },
+            format: {
+              type: "string",
+              description: "Archive format: zip, tar, tar.gz (auto-detected from extension if omitted)",
+            },
+          },
+          required: ["sourcePaths", "outputPath"],
+        },
+      },
+      {
+        name: "extract_archive",
+        description: "Extract a zip, tar, tar.gz, or gz archive.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            archivePath: { type: "string", description: "Archive file path" },
+            outputDir: { type: "string", description: "Output directory (default: same as archive name)" },
+          },
+          required: ["archivePath"],
+        },
+      },
+      {
+        name: "get_archive_info",
+        description: "Get archive metadata: format, entry list, sizes.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            archivePath: { type: "string", description: "Archive file path" },
+          },
+          required: ["archivePath"],
+        },
+      },
+      {
+        name: "gzip_file",
+        description: "Compress a single file with gzip.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: { type: "string", description: "File to compress" },
+            outputPath: { type: "string", description: "Output path (default: file.gz)" },
+          },
+          required: ["filePath"],
+        },
+      },
+      {
+        name: "gunzip_file",
+        description: "Decompress a gzip file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: { type: "string", description: "Gzip file to decompress" },
+            outputPath: { type: "string", description: "Output path (default: remove .gz)" },
+          },
+          required: ["filePath"],
+        },
+      },
+      // Config
+      {
+        name: "get_config",
+        description: "Get MCP DevKit configuration value(s). Returns all config if no section specified.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            section: { type: "string", description: "Config section (e.g., preferences, memory, http)" },
+            key: { type: "string", description: "Config key within section" },
+          },
+        },
+      },
+      {
+        name: "set_config",
+        description: "Set a configuration value. Values are auto-parsed as JSON if possible.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            section: { type: "string", description: "Config section" },
+            key: { type: "string", description: "Config key" },
+            value: { type: "string", description: "Value to set (JSON-encoded or plain string)" },
+          },
+          required: ["section", "key", "value"],
+        },
+      },
+      {
+        name: "reset_config",
+        description: "Reset configuration to defaults. Optionally reset just one section.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            section: { type: "string", description: "Section to reset (omit to reset all)" },
+          },
+        },
+      },
+      {
+        name: "list_config_sections",
+        description: "List all config sections and their keys.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "delete_config_key",
+        description: "Delete a specific config key.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            section: { type: "string", description: "Config section" },
+            key: { type: "string", description: "Config key to delete" },
+          },
+          required: ["section", "key"],
+        },
+      },
+      {
+        name: "export_config",
+        description: "Export configuration to a JSON file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            exportPath: { type: "string", description: "Output path (optional)" },
+          },
+        },
+      },
+      {
+        name: "import_config",
+        description: "Import configuration from a JSON file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            importPath: { type: "string", description: "Path to config JSON file" },
+          },
+          required: ["importPath"],
+        },
+      },
     ],
   };
 });
@@ -1883,11 +2481,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await explainArchitecture(String(args.path));
       break;
     case "remember":
-      result = remember(
-        String(args.key),
-        String(args.content),
-        (args.tags as string[]) ?? []
-      );
+      result = remember(String(args.key), String(args.content), (args.tags as string[]) ?? []);
       break;
     case "recall":
       result = recall(String(args.query), Number(args.limit ?? 10));
@@ -1933,23 +2527,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         String(args.command),
         args.cwd as string | undefined,
         args.shell as string | undefined,
-        Number(args.timeout ?? 30000)
+        Number(args.timeout ?? 30000),
       );
       break;
     case "git_status":
       result = await gitStatus(args.repoPath as string | undefined);
       break;
     case "git_log":
-      result = await gitLog(
-        args.repoPath as string | undefined,
-        Number(args.count ?? 10)
-      );
+      result = await gitLog(args.repoPath as string | undefined, Number(args.count ?? 10));
       break;
     case "git_diff":
-      result = await gitDiff(
-        args.repoPath as string | undefined,
-        args.target as string | undefined
-      );
+      result = await gitDiff(args.repoPath as string | undefined, args.target as string | undefined);
       break;
     case "search_code":
       result = await searchCode(
@@ -1959,14 +2547,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         Number(args.maxResults ?? 50),
         args.ext as string | undefined,
         Boolean(args.caseSensitive ?? false),
-        Number(args.contextLines ?? 2)
+        Number(args.contextLines ?? 2),
       );
       break;
     case "get_file_context":
       result = await getFileContext(
         String(args.filePath),
         Number(args.startLine ?? 1),
-        args.endLine as number | undefined
+        args.endLine as number | undefined,
       );
       break;
     case "read_file":
@@ -2077,7 +2665,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await gitBranches(args.repoPath as string | undefined);
       break;
     case "git_checkout":
-      result = await gitCheckout(String(args.branch), Boolean(args.create ?? false), args.repoPath as string | undefined);
+      result = await gitCheckout(
+        String(args.branch),
+        Boolean(args.create ?? false),
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_stash":
       result = await gitStash(args.message as string | undefined, args.repoPath as string | undefined);
@@ -2095,16 +2687,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await gitRestore(args.files as string[], args.repoPath as string | undefined);
       break;
     case "git_push":
-      result = await gitPush(args.remote as string | undefined, args.branch as string | undefined, Boolean(args.force ?? false), args.repoPath as string | undefined);
+      result = await gitPush(
+        args.remote as string | undefined,
+        args.branch as string | undefined,
+        Boolean(args.force ?? false),
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_pull":
-      result = await gitPull(args.remote as string | undefined, args.branch as string | undefined, args.repoPath as string | undefined);
+      result = await gitPull(
+        args.remote as string | undefined,
+        args.branch as string | undefined,
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_remote":
       result = await gitRemote(args.repoPath as string | undefined);
       break;
     case "git_merge":
-      result = await gitMerge(String(args.branch), Boolean(args.noFastForward ?? false), args.repoPath as string | undefined);
+      result = await gitMerge(
+        String(args.branch),
+        Boolean(args.noFastForward ?? false),
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_rebase":
       result = await gitRebase(String(args.branch), args.repoPath as string | undefined);
@@ -2113,10 +2718,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = await gitTags(args.repoPath as string | undefined);
       break;
     case "git_create_tag":
-      result = await gitCreateTag(String(args.name), args.message as string | undefined, args.repoPath as string | undefined);
+      result = await gitCreateTag(
+        String(args.name),
+        args.message as string | undefined,
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_blame":
-      result = await gitBlame(String(args.filePath), args.startLine as number | undefined, args.endLine as number | undefined, args.repoPath as string | undefined);
+      result = await gitBlame(
+        String(args.filePath),
+        args.startLine as number | undefined,
+        args.endLine as number | undefined,
+        args.repoPath as string | undefined,
+      );
       break;
     case "git_show":
       result = await gitShow(String(args.commit), args.repoPath as string | undefined);
@@ -2202,7 +2816,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         Boolean(args.isRevision ?? false),
         args.revisesThought as number | undefined,
         args.branchFromThought as number | undefined,
-        args.branchId as string | undefined
+        args.branchId as string | undefined,
       );
       break;
     case "get_thoughts":
@@ -2273,15 +2887,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = regexTest(String(args.pattern), String(args.text), String(args.flags ?? ""));
       break;
     case "generate_password":
-      result = generatePassword(
-        Number(args.length ?? 16),
-        {
-          uppercase: Boolean(args.includeUppercase ?? true),
-          lowercase: Boolean(args.includeLowercase ?? true),
-          numbers: Boolean(args.includeNumbers ?? true),
-          symbols: Boolean(args.includeSymbols ?? true),
-        }
-      );
+      result = generatePassword(Number(args.length ?? 16), {
+        uppercase: Boolean(args.includeUppercase ?? true),
+        lowercase: Boolean(args.includeLowercase ?? true),
+        numbers: Boolean(args.includeNumbers ?? true),
+        symbols: Boolean(args.includeSymbols ?? true),
+      });
       break;
     case "jwt_decode":
       result = jwtDecode(String(args.token));
@@ -2298,22 +2909,156 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "create_todo":
       result = await createTodo(
         String(args.text),
-        (args.priority as "low" | "medium" | "high" | "critical" | undefined),
+        args.priority as "low" | "medium" | "high" | "critical" | undefined,
         (args.tags as string[]) ?? [],
         (args.blocks as string[]) ?? [],
         (args.blockedBy as string[]) ?? [],
         args.dueAt as string | undefined,
-        args.estimatedMinutes as number | undefined
+        args.estimatedMinutes as number | undefined,
       );
       break;
     case "list_todos":
-      result = await listTodos(args.filter as { done?: boolean; priority?: string; tag?: string; overdue?: boolean } | undefined);
+      result = await listTodos(
+        args.filter as { done?: boolean; priority?: string; tag?: string; overdue?: boolean } | undefined,
+      );
       break;
     case "complete_todo":
       result = await completeTodo(String(args.id));
       break;
     case "delete_todo":
       result = await deleteTodo(String(args.id));
+      break;
+    // Snippets
+    case "save_snippet":
+      result = await saveSnippet(
+        String(args.name),
+        String(args.code),
+        args.language as string | undefined,
+        (args.tags as string[]) ?? [],
+        args.description as string | undefined,
+        args.filename as string | undefined,
+      );
+      break;
+    case "find_snippet":
+      result = await findSnippet(String(args.query), args.language as string | undefined, Number(args.limit ?? 10));
+      break;
+    case "get_snippet":
+      result = await getSnippet(String(args.id));
+      break;
+    case "list_snippets":
+      result = await listSnippets(args.language as string | undefined, args.tag as string | undefined);
+      break;
+    case "delete_snippet":
+      result = await deleteSnippet(String(args.id));
+      break;
+    case "update_snippet":
+      result = await updateSnippet(String(args.id), {
+        name: args.name as string | undefined,
+        code: args.code as string | undefined,
+        language: args.language as string | undefined,
+        tags: args.tags as string[] | undefined,
+        description: args.description as string | undefined,
+      });
+      break;
+    case "export_snippets":
+      result = await exportSnippets(args.exportPath as string | undefined);
+      break;
+    case "import_snippets":
+      result = await importSnippets(String(args.importPath));
+      break;
+    // Templates
+    case "list_templates":
+      result = await listTemplates(args.category as string | undefined, args.language as string | undefined);
+      break;
+    case "get_template":
+      result = await getTemplate(String(args.id));
+      break;
+    case "render_template":
+      result = await renderTemplateFile(
+        String(args.id),
+        (args.variables as Record<string, string>) ?? {},
+        args.outputPath as string | undefined,
+      );
+      break;
+    case "create_template":
+      result = await createTemplate(
+        String(args.name),
+        String(args.content),
+        String(args.language),
+        String(args.category),
+        args.description as string | undefined,
+        (args.variables as string[]) ?? [],
+        (args.tags as string[]) ?? [],
+      );
+      break;
+    case "delete_template":
+      result = await deleteTemplate(String(args.id));
+      break;
+    case "search_templates":
+      result = await searchTemplates(String(args.query));
+      break;
+    // Batch file operations
+    case "batch_read":
+      result = await batchRead(args.filePaths as string[]);
+      break;
+    case "batch_write":
+      result = await batchWrite(args.writes as Array<{ filePath: string; content: string }>);
+      break;
+    case "batch_edit":
+      result = await batchEdit(
+        args.edits as Array<{ filePath: string; replacements: Array<{ oldString: string; newString: string }> }>,
+      );
+      break;
+    case "batch_delete":
+      result = await batchDelete(args.filePaths as string[]);
+      break;
+    case "batch_copy":
+      result = await batchCopy(args.copies as Array<{ source: string; destination: string }>);
+      break;
+    case "batch_move":
+      result = await batchMove(args.moves as Array<{ source: string; destination: string }>);
+      break;
+    // Archive
+    case "create_archive":
+      result = await createArchive(
+        args.sourcePaths as string[],
+        String(args.outputPath),
+        args.format as "zip" | "tar" | "tar.gz" | undefined,
+      );
+      break;
+    case "extract_archive":
+      result = await extractArchive(String(args.archivePath), args.outputDir as string | undefined);
+      break;
+    case "get_archive_info":
+      result = await getArchiveInfo(String(args.archivePath));
+      break;
+    case "gzip_file":
+      result = await gzipFile(String(args.filePath), args.outputPath as string | undefined);
+      break;
+    case "gunzip_file":
+      result = await gunzipFile(String(args.filePath), args.outputPath as string | undefined);
+      break;
+    // Config
+    case "get_config":
+      result = await getConfig(args.section as string | undefined, args.key as string | undefined);
+      break;
+    case "set_config":
+      result = await setConfig(String(args.section), String(args.key), String(args.value));
+      break;
+    case "reset_config":
+      result = await resetConfig(args.section as string | undefined);
+      break;
+    case "list_config_sections":
+      result = await listConfigSections();
+      break;
+    case "delete_config_key":
+      result = await deleteConfigKey(String(args.section), String(args.key));
+      break;
+    case "export_config":
+      result = await exportConfig(args.exportPath as string | undefined);
+      break;
+    case "import_config":
+      result = await importConfig(String(args.importPath));
       break;
     default:
       throw new Error(`Unknown tool: ${request.params.name}`);
@@ -2323,8 +3068,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     content: [
       {
         type: "text",
-        text:
-          typeof result === "string" ? result : JSON.stringify(result, null, 2),
+        text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
       } as TextContent,
     ],
   };
